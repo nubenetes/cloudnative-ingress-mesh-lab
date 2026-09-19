@@ -1,6 +1,27 @@
+[🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | [FQDN Routing](FQDN_ROUTING.md) | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | **Lab 3: Traefik Edge**
+
+---
+
 # Lab 3: Gateway API-Native Edge Router (Traefik v3)
 
 This laboratory provides an end-to-end, production-grade guide for deploying and operating **Traefik v3** as a high-performance, Kubernetes Gateway API-native edge ingress controller with advanced middleware filters.
+
+---
+
+## Table of Contents
+- [1. Architectural Prerequisites](#1-architectural-prerequisites)
+- [2. Cluster Topology & Kind Configuration](#2-cluster-topology--kind-configuration)
+- [3. Gateway API CRD Installation](#3-gateway-api-crd-installation)
+- [4. Traefik v3 Deployment with Gateway API Provider](#4-traefik-v3-deployment-with-gateway-api-provider)
+- [5. Gateway API Infrastructure Manifests](#5-gateway-api-infrastructure-manifests)
+  - [5.1 GatewayClass & Gateway](#51-gatewayclass--gateway)
+  - [5.2 Traefik Advanced Middlewares](#52-traefik-advanced-middlewares)
+  - [5.3 90/10 Canary Shifting with Middleware Filters](#53-9010-canary-shifting-with-middleware-filters)
+- [6. Real-World Testing & Verification](#6-real-world-testing--verification)
+  - [6.1 Canary Verification Script](#61-canary-verification-script)
+  - [6.2 Security Headers & Response Inspection](#62-security-headers--response-inspection)
+  - [6.3 Rate Limiting Stress Test](#63-rate-limiting-stress-test)
+  - [6.4 Live Prometheus Metrics Inspection](#64-live-prometheus-metrics-inspection)
 
 ---
 
@@ -271,3 +292,7 @@ Inspect Traefik's internal Prometheus metrics:
 ```bash
 kubectl exec -n traefik-system deploy/traefik -- wget -qO- http://localhost:9100/metrics | grep "traefik_service_request_duration_seconds" | head -n 15
 ```
+
+---
+
+⬅️ Previous: [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | 🏠 [Home](../README.md) | 🔄 Reset: [Lab 1: Cilium eBPF](LAB_CILIUM.md)

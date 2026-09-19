@@ -1,6 +1,27 @@
+[🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | [FQDN Routing](FQDN_ROUTING.md) | **Lab 1: Cilium** | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
+
+---
+
 # Lab 1: Kernel-Level eBPF Gateway & Service Mesh (Cilium)
 
 This laboratory provides an end-to-end, production-grade guide for deploying and testing **Cilium Service Mesh and Gateway API** in a sidecarless, eBPF-accelerated environment.
+
+---
+
+## Table of Contents
+- [1. Architectural Prerequisites](#1-architectural-prerequisites)
+- [2. Cluster Topology & Kind Configuration](#2-cluster-topology--kind-configuration)
+- [3. Gateway API CRD Installation](#3-gateway-api-crd-installation)
+- [4. Cilium Deployment with Gateway API & Hubble](#4-cilium-deployment-with-gateway-api--hubble)
+- [5. Workload & Gateway API Manifests](#5-workload--gateway-api-manifests)
+  - [5.1 GatewayClass & Gateway Configuration](#51-gatewayclass--gateway-configuration)
+  - [5.2 Microservice Workloads (v1 & v2 Canary)](#52-microservice-workloads-v1--v2-canary)
+  - [5.3 90/10 Canary Traffic Shifting via HTTPRoute](#53-9010-canary-traffic-shifting-via-httproute)
+- [6. L7 Security Policy & Zero-Trust Verification](#6-l7-security-policy--zero-trust-verification)
+- [7. Real-World Testing & Verification Scripts](#7-real-world-testing--verification-scripts)
+  - [7.1 Automated Canary Traffic-Split Test](#71-automated-canary-traffic-split-test)
+  - [7.2 Cryptographic Security & Zero-Trust Validation](#72-cryptographic-security--zero-trust-validation)
+  - [7.3 Live eBPF & Hubble Observability](#73-live-ebpf--hubble-observability)
 
 ---
 
@@ -348,3 +369,7 @@ hubble observe --namespace lab-cilium --follow
 # View drop reasons across the cluster
 hubble observe --verdict DROPPED --follow
 ```
+
+---
+
+⬅️ Previous: [FQDN-Driven Routing](FQDN_ROUTING.md) | 🏠 [Home](../README.md) | ➡️ Next: [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md)

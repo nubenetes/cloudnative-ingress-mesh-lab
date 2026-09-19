@@ -1,6 +1,24 @@
+[🏠 Home / README](../README.md) | **Architecture Deep Dive** | [FQDN Routing](FQDN_ROUTING.md) | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
+
+---
+
 # Advanced Networking Architecture Deep Dive: eBPF Socket Layer vs. Ambient Proxies in Enterprise Kubernetes & OpenShift
 
 This document provides a principal-level engineering dissection of the data planes powering modern Kubernetes ingress and service mesh architectures in 2026. It contrasts **Kernel-level eBPF Short-Circuiting (Cilium)** with **Decoupled Ambient Proxying (Istio Ambient)**, followed by enterprise hardening guidelines for **Red Hat OpenShift**.
+
+---
+
+## Table of Contents
+- [1. Data Plane Packet Journey Breakdown](#1-data-plane-packet-journey-breakdown)
+  - [1.1 The Legacy Container Network Stack Bottleneck](#11-the-legacy-container-network-stack-bottleneck)
+  - [1.2 Cilium eBPF Socket-Layer Short-Circuiting (`sockops`)](#12-cilium-ebpf-socket-layer-short-circuiting-sockops)
+  - [1.3 Istio Ambient Data Plane: Split L4 Transport and L7 Application Layers](#13-istio-ambient-data-plane-split-l4-transport-and-l7-application-layers)
+- [2. Red Hat OpenShift Enterprise Compliance & Hardening](#2-red-hat-openshift-enterprise-compliance--hardening)
+  - [2.1 Security Context Constraints (SCC) Matrix](#21-security-context-constraints-scc-matrix)
+  - [2.2 SELinux Hardening on Red Hat Enterprise Linux CoreOS (RHCOS)](#22-selinux-hardening-on-red-hat-enterprise-linux-coreos-rhcos)
+  - [2.3 CNI Coexistence: Cilium vs. OVN-Kubernetes vs. Multus](#23-cni-coexistence-cilium-vs-ovn-kubernetes-vs-multus)
+  - [2.4 FIPS 140-3 Cryptographic Compliance](#24-fips-140-3-cryptographic-compliance)
+- [3. Comparative Summary Architecture Matrix](#3-comparative-summary-architecture-matrix)
 
 ---
 
@@ -217,3 +235,7 @@ In enterprise government, banking, and defense clusters operating in FIPS mode:
   │ FIPS: Kernel WireGuard    │     │ FIPS: BoringCrypto/RHEL   │      │ FIPS: Go Crypto / RHEL    │
   └───────────────────────────┘     └───────────────────────────┘      └───────────────────────────┘
 ```
+
+---
+
+[🏠 Home / Overview](../README.md) | ➡️ Next: [FQDN-Driven Routing Architecture](FQDN_ROUTING.md)

@@ -1,6 +1,27 @@
+[🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | **FQDN Routing** | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
+
+---
+
 # FQDN-Driven Routing: North-South & East-West Architecture Guide
 
 In enterprise cloud-native fabrics, relying solely on Kubernetes internal short-names (`service` or `service.namespace.svc.cluster.local`) introduces significant architectural debt. This guide details why modern platforms enforce **Fully Qualified Domain Names (FQDNs)** across both North-South and East-West transit, and demonstrates production implementations across **Traefik v3 (without a service mesh)**, **Cilium eBPF**, and **Istio Ambient**.
+
+---
+
+## Table of Contents
+- [1. Why Enforce FQDNs on Both North-South and East-West?](#1-why-enforce-fqdns-on-both-north-south-and-east-west)
+  - [1.1 The Pitfalls of `service.namespace.svc.cluster.local`](#11-the-pitfalls-of-servicenamespacesvcclusterlocal)
+  - [1.2 Enterprise Use Cases](#12-enterprise-use-cases)
+- [2. Solution Implementation 1: Traefik v3 (without Traefik Mesh)](#2-solution-implementation-1-traefik-v3-without-traefik-mesh)
+  - [2.1 CoreDNS In-Cluster Rewrite](#21-coredns-in-cluster-rewrite)
+  - [2.2 Traefik `IngressRoute` with Middlewares for East-West & North-South](#22-traefik-ingressroute-with-middlewares-for-east-west--north-south)
+- [3. Solution Implementation 2: Cilium eBPF](#3-solution-implementation-2-cilium-ebpf)
+  - [3.1 Gateway API HTTPRoute Matching Internal & External FQDNs](#31-gateway-api-httproute-matching-internal--external-fqdns)
+  - [3.2 Cilium DNS-Aware Egress Policy (`toFQDNs`)](#32-cilium-dns-aware-egress-policy-tofqdns)
+- [4. Solution Implementation 3: Istio Ambient Mode](#4-solution-implementation-3-istio-ambient-mode)
+  - [4.1 Istio ServiceEntry for Internal FQDN](#41-istio-serviceentry-for-internal-fqdn)
+  - [4.2 Gateway API HTTPRoute Binding to Waypoint with FQDN Hostname](#42-gateway-api-httproute-binding-to-waypoint-with-fqdn-hostname)
+- [5. Summary Architectural Comparison](#5-summary-architectural-comparison)
 
 ---
 
@@ -247,3 +268,7 @@ spec:
 | **Proxy Traversal** | 1 hop through Traefik | 0 hops (L4) or 1 hop (L7 Envoy redirect) | 1 hop (`ztunnel` L4) + optional Waypoint (L7) |
 | **Middlewares / Policies** | Native Traefik Middlewares (RateLimit, Headers) | Cilium L7 Network Policy (Path, Method, Auth) | Istio `AuthorizationPolicy` & `RequestAuthentication` |
 | **Operational Overhead** | **Lowest** (No mesh control plane or daemonset) | Medium (Cilium CNI operator & Hubble) | Medium (istiod + ztunnel daemonset + Waypoint) |
+
+---
+
+⬅️ Previous: [Architecture Deep Dive](ARCHITECTURE.md) | 🏠 [Home](../README.md) | ➡️ Next: [Lab 1: Cilium eBPF](LAB_CILIUM.md)

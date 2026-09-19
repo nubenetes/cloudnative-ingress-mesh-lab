@@ -10,6 +10,33 @@
 
 ---
 
+## Documentation Index & Navigation
+
+| Document | Focus Area |
+| :--- | :--- |
+| **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** | Multi-layer packet flow analyses, Linux `sockops` vs Envoy proxies, OpenShift SCCs |
+| **[FQDN_ROUTING.md](docs/FQDN_ROUTING.md)** | Dual-plane (N-S & E-W) FQDN routing across mesh & non-mesh architectures |
+| **[LAB_CILIUM.md](docs/LAB_CILIUM.md)** | Automated PoC: Kernel-level eBPF Gateway & Mesh, Canary, Hubble observability |
+| **[LAB_ISTIO_AMBIENT.md](docs/LAB_ISTIO_AMBIENT.md)** | Automated PoC: Sidecarless Istio Ambient (ztunnel + Waypoint), mTLS validation |
+| **[LAB_TRAEFIK_EDGE.md](docs/LAB_TRAEFIK_EDGE.md)** | Automated PoC: Gateway API-native Edge Router, Middlewares, CircuitBreaker |
+
+---
+
+## Table of Contents
+- [1. Executive Summary & 2026 Landscape Shifts](#1-executive-summary--2026-landscape-shifts)
+- [2. Comprehensive Evaluation Matrix](#2-comprehensive-evaluation-matrix)
+- [3. Platform Decision Matrix & Ranked Recommendations](#3-platform-decision-matrix--ranked-recommendations)
+  - [Archetype 1: Ultra-Low Latency & Telco/Fintech](#archetype-1-high-performance-ultra-low-latency--telcofintech-workloads)
+  - [Archetype 2: Enterprise Multi-Tenant Zero-Trust](#archetype-2-enterprise-multi-tenant-zero-trust-cloud-platform-eg-openshift-on-awsbare-metal)
+  - [Archetype 3: High-Velocity API Edge Platform](#archetype-3-high-velocity-api-edge--developer-platform-north-south-ingress-focus)
+- [4. Architecture Diagrams](#4-architecture-diagrams)
+  - [Diagram 1: North-South into East-West Zero-Trust Fabric](#diagram-1-north-south-ingress-flow-into-east-west-zero-trust-mesh-fabric)
+  - [Diagram 2: Data Plane Structural Comparison](#diagram-2-structural-data-plane-comparison-sidecar-vs-ebpf-bypass-vs-istio-ambient)
+- [5. Repository Structure](#5-repository-structure)
+- [6. Quick Start & Global Automation](#6-quick-start--global-automation)
+
+---
+
 ## 1. Executive Summary & 2026 Landscape Shifts
 
 The Kubernetes networking landscape in 2026 has crossed two definitive architectural inflection points:
