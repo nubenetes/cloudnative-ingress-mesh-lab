@@ -1,4 +1,4 @@
-[🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | **FQDN Routing** | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
+[🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | **FQDN Routing** | [Extended Solutions](EXTENDED_SOLUTIONS.md) | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
 
 ---
 
@@ -75,6 +75,9 @@ A frequent misconception in cloud-native architecture is:
 
 **The Truth: It depends strictly on transit direction (North-South vs. East-West).**
 
+<details>
+<summary><b>Diagram 2.1: North-South vs. East-West DNS Resolution Flow (Click to Expand / Collapse)</b></summary>
+
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                        NORTH-SOUTH TRANSIT (External -> Cluster)                       │
@@ -112,6 +115,8 @@ A frequent misconception in cloud-native architecture is:
 │                └── Traefik matches `Host(`backend.internal.corp`)` & applies Middlewares│
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+</details>
 
 #### Why Traefik Middlewares Cannot Bypass DNS Resolution (The OSI Model Boundary)
 1. **Layer 3/4 Socket Precedence**: Traefik is an application-layer (Layer 7) reverse proxy. An HTTP request or middleware pipeline cannot physically execute until a TCP three-way handshake (SYN, SYN-ACK, ACK) completes.
@@ -217,6 +222,9 @@ Both projects solve the exact same foundational challenge in cloud-native platfo
 #### 2. The Core Differences in Technical Approach
 While they solve the same problem, they adopt two distinct architectural philosophies for East-West name resolution:
 
+<details>
+<summary><b>Diagram 2.2: Architectural Approaches to East-West FQDN Resolution (Click to Expand / Collapse)</b></summary>
+
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │  APPROACH A: Transparent In-Cluster DNS Interception (cloudnative-ingress-mesh-lab)   │
@@ -241,6 +249,8 @@ While they solve the same problem, they adopt two distinct architectural philoso
 │  • Target Environment: Cloud-native AWS ROSA / EKS leveraging NLBs & Route 53.         │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+</details>
 
 #### 3. How `traefik-fqdn-management-poc-openshift-aws` Bypasses DNS Forwarders
 That repository uses three complementary architectural mechanisms:
@@ -294,6 +304,9 @@ In AWS ROSA, private VPC hosted zones (e.g., `service-b.internal.company.com`) a
 
 To achieve transparent rewriting of `*.internal.corp` to Traefik v3 on OpenShift 4.14 – 4.20+, deploy a lightweight, unprivileged secondary CoreDNS forwarder in an infrastructure namespace (`infra-dns`), then configure the OpenShift DNS Operator to forward the zone to this resolver.
 
+<details>
+<summary><b>Diagram 2.3: OpenShift Pattern A - DNS Operator Zone Forwarding Flow (Click to Expand / Collapse)</b></summary>
+
 ```
 [ Workload Pod ]
        │
@@ -311,6 +324,8 @@ To achieve transparent rewriting of `*.internal.corp` to Traefik v3 on OpenShift
        ▼
 [ Workload Pod communicates directly with Traefik Edge Router ]
 ```
+
+</details>
 
 #### Step 1: Deploy In-Cluster Resolver (`deploys/traefik/openshift-dns-forwarder.yaml`)
 ```yaml
@@ -631,6 +646,9 @@ spec:
 
 The most elegant architectural breakthrough of modern meshes like **Cilium eBPF** and **Istio Ambient** is that **they completely eliminate the need to modify cluster DNS operators or CoreDNS!**
 
+<details>
+<summary><b>Diagram 4.1: Mesh-Native Kernel & Node-Level Transparent DNS Interception (Click to Expand / Collapse)</b></summary>
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │              eBPF / Ambient DNS Redirection (No Corefile Mod Required)          │
@@ -641,6 +659,8 @@ The most elegant architectural breakthrough of modern meshes like **Cilium eBPF*
 │ 4. Response returned instantly; CoreDNS pods are completely bypassed!           │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+</details>
 
 ### 4.1 Cilium eBPF: In-Kernel DNS Proxy & `toFQDNs` Egress Policies
 
@@ -780,4 +800,4 @@ spec:
 
 ---
 
-⬅️ Previous: [Architecture Deep Dive](ARCHITECTURE.md) | 🏠 [Home](../README.md) | ➡️ Next: [Lab 1: Cilium eBPF](LAB_CILIUM.md)
+⬅️ Previous: [Architecture Deep Dive](ARCHITECTURE.md) | 🏠 [Home](../README.md) | ➡️ Next: [Extended Solutions](EXTENDED_SOLUTIONS.md)

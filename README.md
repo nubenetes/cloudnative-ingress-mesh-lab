@@ -36,6 +36,8 @@
 | :--- | :--- |
 | **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** | Multi-layer packet flow analyses, Linux `sockops` vs Envoy proxies, OpenShift SCCs |
 | **[FQDN_ROUTING.md](docs/FQDN_ROUTING.md)** | Dual-plane (N-S & E-W) FQDN routing across mesh & non-mesh architectures |
+| **[EXTENDED_SOLUTIONS.md](docs/EXTENDED_SOLUTIONS.md)** | Architectural deep dives on Linkerd (Rust), Envoy Gateway, and Kong Gateway + Kuma |
+| **[SCENARIOS_AND_RECOMMENDATIONS.md](docs/SCENARIOS_AND_RECOMMENDATIONS.md)** | 6 Enterprise scenarios, TCO benchmarks, blast radius analysis, and migration playbooks |
 | **[LAB_CILIUM.md](docs/LAB_CILIUM.md)** | Automated PoC: Kernel-level eBPF Gateway & Mesh, Canary, Hubble observability |
 | **[LAB_ISTIO_AMBIENT.md](docs/LAB_ISTIO_AMBIENT.md)** | Automated PoC: Sidecarless Istio Ambient (ztunnel + Waypoint), mTLS validation |
 | **[LAB_TRAEFIK_EDGE.md](docs/LAB_TRAEFIK_EDGE.md)** | Automated PoC: Gateway API-native Edge Router, Middlewares, CircuitBreaker |
@@ -57,8 +59,14 @@
   - [Archetype 2: Enterprise Multi-Tenant Zero-Trust](#archetype-2-enterprise-multi-tenant-zero-trust-cloud-platform-eg-openshift-on-awsbare-metal)
   - [Archetype 3: High-Velocity API Edge Platform](#archetype-3-high-velocity-api-edge--developer-platform-north-south-ingress-focus)
 - [5. Architecture Diagrams](#5-architecture-diagrams)
-  - [Diagram 1: North-South into East-West Zero-Trust Fabric](#diagram-1-north-south-ingress-flow-into-east-west-zero-trust-mesh-fabric)
-  - [Diagram 2: Data Plane Structural Comparison](#diagram-2-structural-data-plane-comparison-sidecar-vs-ebpf-bypass-vs-istio-ambient)
+  - [Diagram 1: End-to-End North-South Ingress into East-West Zero-Trust Mesh Fabric](#diagram-1-end-to-end-north-south-ingress-into-east-west-zero-trust-mesh-fabric)
+  - [Diagram 2: 3-Way Structural Data Plane Comparison (Sidecar vs. eBPF Bypass vs. Istio Ambient)](#diagram-2-3-way-structural-data-plane-comparison-sidecar-vs-ebpf-bypass-vs-istio-ambient)
+  - [Diagram 3: Traefik Proxy v3 Edge Gateway & East-West Hairpin Pipeline](#diagram-3-traefik-proxy-v3-edge-gateway--east-west-hairpin-pipeline)
+  - [Diagram 4: Linkerd Micro-Proxy (Rust) Sidecar & Service Attachment](#diagram-4-linkerd-micro-proxy-rust-sidecar--service-attachment)
+  - [Diagram 5: Envoy Gateway CNCF Controller & Policy Engine](#diagram-5-envoy-gateway-cncf-controller--policy-engine)
+  - [Diagram 6: Kong Gateway & Kuma Mesh Hybrid Topology](#diagram-6-kong-gateway--kuma-mesh-hybrid-topology)
+  - [Diagram 7: Dual-Plane FQDN Routing Paradigms (Transparent In-Cluster vs. Split-Horizon Ingress)](#diagram-7-dual-plane-fqdn-routing-paradigms-transparent-in-cluster-vs-split-horizon-ingress)
+  - [Diagram 8: Enterprise Platform Decision Tree & Scenario Recommendation Flowchart](#diagram-8-enterprise-platform-decision-tree--scenario-recommendation-flowchart)
 - [6. Repository Structure](#6-repository-structure)
 - [7. Quick Start & Global Automation](#7-quick-start--global-automation)
 - [8. Authoritative References & Sources of Truth](#8-authoritative-references--sources-of-truth)
@@ -235,7 +243,10 @@ FQDN-based routing behaves fundamentally differently across edge gateways and se
 
 ## 5. Architecture Diagrams
 
-### Diagram 1: North-South Ingress Flow into East-West Zero-Trust Mesh Fabric
+### Diagram 1: End-to-End North-South Ingress into East-West Zero-Trust Mesh Fabric
+
+<details>
+<summary><b>Diagram 1: End-to-End North-South Ingress into East-West Zero-Trust Mesh Fabric (Click to Expand / Collapse)</b></summary>
 
 ```mermaid
 flowchart TD
@@ -272,9 +283,22 @@ flowchart TD
     class BackendV1,BackendV2 app;
 ```
 
+</details>
+
+#### Architecture & Packet Lifecycle Breakdown
+- **North-South Perimeter Ingestion**: External client requests reach the edge ingress tier via TLS 1.3 over TCP port 443. The ingress controller (e.g. Traefik v3) terminates edge TLS, inspects SNI and HTTP Host headers, and executes configured middleware pipelines (token-bucket rate limiting, JWT authentication, and path rewrites).
+- **Gateway API Role-Oriented Dispatch**: The request is evaluated against Kubernetes Gateway API `HTTPRoute` rules (`gateway.networking.k8s.io/v1`). Routing rules match URL paths, methods, or headers without requiring vendor-locked Ingress annotations.
+- **East-West Zero-Trust Transport Transit**: Once inside the cluster boundary, traffic is handed off to the internal service mesh transport fabric. Packets are encapsulated with mutual TLS (mTLS) via HBONE (HTTP/2 CONNECT over TCP port 15008) in Istio Ambient or Linux kernel WireGuard/IPsec tunnels in Cilium, carrying cryptographic SPIFFE identities (`spiffe://cluster.local/ns/...`).
+- **Selective L4/L7 Split-Plane Processing**: Unlike legacy architectures that force every packet through an application proxy, the ambient/eBPF data plane discriminates between L4 and L7 requirements:
+  - *Pure L4 Wire-Speed Path*: Requests requiring no HTTP-level filtering bypass user-space proxies entirely, flowing directly to target sockets via eBPF socket maps (`sockops`).
+  - *Namespace L7 Waypoint Path*: Requests requiring fine-grained authorization policies (`AuthorizationPolicy`), weighted canary splitting, or header mutations are forwarded to dedicated, namespace-isolated Envoy Waypoint proxies before reaching the backend pods.
+
 ---
 
-### Diagram 2: Structural Data Plane Comparison (Sidecar vs. eBPF Bypass vs. Istio Ambient)
+### Diagram 2: 3-Way Structural Data Plane Comparison (Sidecar vs. eBPF Bypass vs. Istio Ambient)
+
+<details>
+<summary><b>Diagram 2: 3-Way Structural Data Plane Comparison (Sidecar vs. eBPF Bypass vs. Istio Ambient) (Click to Expand / Collapse)</b></summary>
 
 ```mermaid
 flowchart TB
@@ -313,6 +337,318 @@ flowchart TB
     class AppA1,Ztunnel1,Ztunnel2,WaypointEnvoy,TargetApp ambient;
 ```
 
+</details>
+
+#### Structural Data Plane Trade-Offs
+- **Traditional Envoy Sidecar Model**: Requires injecting an Envoy container alongside every application pod. Each request traverses 4 distinct TCP/IP network hops, with context switches between user-space and kernel-space at both the sender and receiver sides. The memory footprint scales linearly at $\mathcal{O}(N)$ ($50\text{MB}\text{--}150\text{MB}$ RSS per pod), and upgrading proxy versions forces a rolling restart of all application workloads.
+- **Cilium eBPF Socket Layer Bypass**: Eliminates the TCP/IP stack entirely for intra-node communication. Using Linux kernel `sock_ops` and `sk_msg` programs, Cilium intercepts TCP socket creation and directly copies socket buffers (`sk_buff`) between the client and server sockets via kernel memory map lookup (`sock_hash`). This achieves near-zero latency overhead ($<0.15\text{ms}$) and consumes 0MB of sidecar memory per pod.
+- **Istio Ambient Split-Plane Model**: Solves the operational friction of sidecars by bifurcating the data plane into two distinct layers:
+  1. *Layer 4 Transport Security (`ztunnel`)*: A single DaemonSet per node written in Rust that terminates and initiates HBONE connections, enforcing mTLS and L4 authorization. Memory usage scales at $\mathcal{O}(\text{Nodes})$ ($\sim 150\text{MB}$ fixed per node).
+  2. *Layer 7 Traffic Governance (`waypoint`)*: Namespace-scoped Envoy instances created on-demand only when L7 HTTPRoute policies, header modifications, or canary routing are required, scaling at $\mathcal{O}(\text{Namespaces})$ and allowing independent zero-downtime proxy upgrades.
+
+---
+
+### Diagram 3: Traefik Proxy v3 Edge Gateway & East-West Hairpin Pipeline
+
+<details>
+<summary><b>Diagram 3: Traefik Proxy v3 Edge Gateway & East-West Hairpin Pipeline (Click to Expand / Collapse)</b></summary>
+
+```mermaid
+flowchart TD
+    Client["&nbsp;&nbsp;&nbsp;&nbsp;External Client / Workload Pod&nbsp;&nbsp;&nbsp;&nbsp;"] -->|"TCP :80 / :443 / :8443"| EntryPoints["&nbsp;&nbsp;&nbsp;&nbsp;Traefik EntryPoints&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(web, websecure, internal)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    
+    subgraph Engine ["&nbsp;&nbsp;Traefik v3 Core Processing Engine&nbsp;&nbsp;"]
+        EntryPoints --> Routers["&nbsp;&nbsp;&nbsp;&nbsp;Router Resolution Engine&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Gateway API HTTPRoute / IngressRoute)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        Routers --> MWChain["&nbsp;&nbsp;&nbsp;&nbsp;Middleware Pipeline Execution&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(RateLimit -> StripPrefix -> TLSOption)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        MWChain --> CBCheck{"&nbsp;&nbsp;Circuit Breaker Closed?&nbsp;&nbsp;"}
+        CBCheck -->|"Tripped (Open: >150ms / 15% errors)"| FastFail["&nbsp;&nbsp;&nbsp;&nbsp;Immediate 503 Service Unavailable&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Shields Failing Backends)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        CBCheck -->|"Healthy (Closed / Half-Open)"| LoadBalancer["&nbsp;&nbsp;&nbsp;&nbsp;Dynamic Load Balancer Service&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Weighted WRR / Health Check)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    end
+    
+    subgraph Workloads ["&nbsp;&nbsp;Upstream Kubernetes Workloads&nbsp;&nbsp;"]
+        LoadBalancer -->|"90% Canary Weight"| PodA["&nbsp;&nbsp;&nbsp;&nbsp;Backend Workload v1 (Stable)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        LoadBalancer -->|"10% Canary Weight"| PodB["&nbsp;&nbsp;&nbsp;&nbsp;Backend Workload v2 (Canary)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    end
+
+    classDef client fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
+    classDef traefik fill:#24A1C1,stroke:#18687d,stroke-width:2px,color:#fff;
+    classDef decision fill:#f59f00,stroke:#d9480f,stroke-width:2px,color:#fff;
+    classDef fail fill:#c92a2a,stroke:#861c1c,stroke-width:2px,color:#fff;
+    classDef pods fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
+
+    class Client client;
+    class EntryPoints,Routers,MWChain,LoadBalancer traefik;
+    class CBCheck decision;
+    class FastFail fail;
+    class PodA,PodB pods;
+```
+
+</details>
+
+#### Traefik v3 Engine Mechanics
+- **Event-Driven Non-Blocking Architecture**: Written in Go, Traefik v3 leverages goroutines and non-blocking I/O multiplexing to maintain high concurrent throughput with exceptionally low base RSS memory ($\sim 45\text{MB}$ per replica), drastically undercutting heavy C++ proxy runtimes.
+- **Strict Middleware Execution Pipeline**: Request filtering occurs across a deterministic chain. Inbound requests pass through token-bucket rate limiters (`average: 50, burst: 100`), URI prefix modifiers (`StripPrefix`), and cryptographic policy inspectors (`TLSOption` enforcing TLS 1.3 and client cert verification) before upstream load balancing decisions are executed.
+- **Real-Time Circuit Breaker Protection**: Dynamic health monitoring evaluates moving latency windows and network error ratios (`LatencyAtQuantileMS(50.0) > 150 || NetworkErrorRatio() > 0.15`). If a backend pod degrades, the circuit trips from Closed to Open, immediately serving 503 responses to prevent cascade failure across the microservice mesh.
+- **East-West Hairpin Routing Capabilities**: Beyond edge ingress, Traefik can serve as a lightweight internal service router. In clusters lacking a full service mesh, microservices can route East-West traffic through Traefik's internal listeners (e.g. port `8443`), benefiting from L7 canary splits, mTLS verification, and access logs without sidecar injection.
+
+---
+
+### Diagram 4: Linkerd Micro-Proxy (Rust) Sidecar & Service Attachment
+
+<details>
+<summary><b>Diagram 4: Linkerd Micro-Proxy (Rust) Sidecar & Service Attachment (Click to Expand / Collapse)</b></summary>
+
+```mermaid
+flowchart TD
+    AppPod["&nbsp;&nbsp;&nbsp;&nbsp;Application Container&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Business Logic Pod)&nbsp;&nbsp;&nbsp;&nbsp;"] <-->|"Loopback / Localhost"| RustProxy["&nbsp;&nbsp;&nbsp;&nbsp;linkerd2-proxy (Rust)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Memory-Safe Micro-Proxy)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    
+    subgraph ControlPlane ["&nbsp;&nbsp;Linkerd Control Plane (Zero-Config Security)&nbsp;&nbsp;"]
+        Identity["&nbsp;&nbsp;&nbsp;&nbsp;linkerd-identity&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Automated Short-Lived mTLS CA)&nbsp;&nbsp;&nbsp;&nbsp;"] -.->|"SPIFFE Certificates (24h TTL)"| RustProxy
+        Destination["&nbsp;&nbsp;&nbsp;&nbsp;linkerd-destination&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Service Discovery & Route Policy)&nbsp;&nbsp;&nbsp;&nbsp;"] -.->|"Service Profile / Gateway API State"| RustProxy
+    end
+    
+    subgraph RoutingModel ["&nbsp;&nbsp;Gateway API Service-Level Binding&nbsp;&nbsp;"]
+        HTTPRoute["&nbsp;&nbsp;&nbsp;&nbsp;HTTPRoute Resource&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(parentRefs: Service instead of Gateway)&nbsp;&nbsp;&nbsp;&nbsp;"] -->|"Injects Rules"| Destination
+    end
+
+    RustProxy -->|"Zero-Config mTLS / TLS 1.3"| PeerProxy["&nbsp;&nbsp;&nbsp;&nbsp;Peer linkerd2-proxy (Rust)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Target Micro-Proxy Sidecar)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    PeerProxy <-->|"Loopback / Localhost"| TargetApp["&nbsp;&nbsp;&nbsp;&nbsp;Target Application Container&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Upstream Pod)&nbsp;&nbsp;&nbsp;&nbsp;"]
+
+    classDef app fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
+    classDef proxy fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
+    classDef cp fill:#1971c2,stroke:#114d84,stroke-width:2px,color:#fff;
+    classDef k8s fill:#7048e8,stroke:#5f3dc4,stroke-width:2px,color:#fff;
+
+    class AppPod,TargetApp app;
+    class RustProxy,PeerProxy proxy;
+    class Identity,Destination cp;
+    class HTTPRoute k8s;
+```
+
+</details>
+
+#### Linkerd Architecture & Operational Paradigms
+- **Memory-Safe Rust Micro-Proxy (`linkerd2-proxy`)**: Linkerd rejects the general-purpose Envoy proxy model in favor of a bespoke, lightweight micro-proxy written entirely in Rust. By utilizing Tokio async I/O and zero-allocation network buffers, `linkerd2-proxy` consumes only $20\text{MB}\text{--}30\text{MB}$ RSS per pod and eliminates entire classes of memory safety vulnerabilities (buffer overflows, use-after-free).
+- **Native Gateway API Mesh Conformance**: Rather than creating synthetic ingress gateways for internal routing, Linkerd adheres directly to the Gateway API Mesh Profile. Application developers attach `HTTPRoute` resources directly to the destination Kubernetes Service using `parentRefs: { group: "", kind: Service, name: backend }`.
+- **Zero-Configuration Cryptographic Identity**: The `linkerd-identity` controller acts as an automated, localized Certificate Authority. It provisions short-lived (24-hour) TLS certificates signed with SPIFFE identities (`spiffe://<trust-domain>/ns/<ns>/sa/<sa>`), rotating them continuously without human intervention or secret-mounting overhead.
+- **Enterprise Licensing Reality (Buoyant 2.15+)**: Following Buoyant's 2024 licensing restructure, official stable release artifacts (LTS builds) require a paid commercial subscription. Open-source deployments must consume rapid weekly "edge" releases, introducing distinct release governance considerations for enterprise platform teams.
+
+---
+
+### Diagram 5: Envoy Gateway CNCF Controller & Policy Engine
+
+<details>
+<summary><b>Diagram 5: Envoy Gateway CNCF Controller & Policy Engine (Click to Expand / Collapse)</b></summary>
+
+```mermaid
+flowchart TD
+    subgraph KubernetesK8s ["&nbsp;&nbsp;Kubernetes Control Plane (Declarative API)&nbsp;&nbsp;"]
+        GWClass["&nbsp;&nbsp;&nbsp;&nbsp;GatewayClass: eg&nbsp;&nbsp;&nbsp;&nbsp;"]
+        GW["&nbsp;&nbsp;&nbsp;&nbsp;Gateway: eg-ingress&nbsp;&nbsp;&nbsp;&nbsp;"]
+        HRoute["&nbsp;&nbsp;&nbsp;&nbsp;HTTPRoute: backend-route&nbsp;&nbsp;&nbsp;&nbsp;"]
+        Policies["&nbsp;&nbsp;&nbsp;&nbsp;Envoy Gateway Policies&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(BackendTrafficPolicy / SecurityPolicy)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    end
+
+    subgraph EGControlPlane ["&nbsp;&nbsp;Envoy Gateway Controller Architecture&nbsp;&nbsp;"]
+        K8sTranslator["&nbsp;&nbsp;&nbsp;&nbsp;Kubernetes Gateway API Reconciler&nbsp;&nbsp;&nbsp;&nbsp;"]
+        IR["&nbsp;&nbsp;&nbsp;&nbsp;Intermediate Representation (IR)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Gateway-IR & xDS-IR Engine)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        xDSServer["&nbsp;&nbsp;&nbsp;&nbsp;Dynamic xDS Management Server&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(gRPC ADS Stream on Port 18000)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        GWClass & GW & HRoute & Policies --> K8sTranslator
+        K8sTranslator --> IR
+        IR --> xDSServer
+    end
+
+    subgraph EGDataPlane ["&nbsp;&nbsp;Managed Envoy Proxy Data Plane&nbsp;&nbsp;"]
+        xDSServer -->|"xDS v3 (LDS, RDS, CDS, EDS)"| EnvoyFleet["&nbsp;&nbsp;&nbsp;&nbsp;Managed Envoy Proxy Deployment&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(C++ High-Performance Proxy Fleet)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        EnvoyFleet -->|"Weighted Routing & Policy"| Upstream["&nbsp;&nbsp;&nbsp;&nbsp;Upstream Kubernetes Pods&nbsp;&nbsp;&nbsp;&nbsp;"]
+    end
+
+    classDef k8s fill:#7048e8,stroke:#5f3dc4,stroke-width:2px,color:#fff;
+    classDef eg fill:#1971c2,stroke:#114d84,stroke-width:2px,color:#fff;
+    classDef envoy fill:#e67700,stroke:#a35400,stroke-width:2px,color:#fff;
+
+    class GWClass,GW,HRoute,Policies k8s;
+    class K8sTranslator,IR,xDSServer eg;
+    class EnvoyFleet,Upstream envoy;
+```
+
+</details>
+
+#### Envoy Gateway Controller Breakdown
+- **Official CNCF Standard Reference**: Envoy Gateway is the community-driven reference controller created by the Envoy Proxy community to unify Gateway API ingress implementations, avoiding proprietary forks and annotation sprawl.
+- **Two-Stage Intermediate Representation (IR) Pipeline**: The control plane reconciles Kubernetes CRDs into an internal `Gateway-IR` (representing abstract routing semantics) and transforms it into `xDS-IR` (Envoy-specific construct models). This decoupled translation prevents invalid user manifests from corrupting the live xDS configuration stream.
+- **Dynamic xDS v3 Streaming**: Configuration is transmitted to managed Envoy proxy pods via gRPC Aggregated Discovery Service (ADS) on TCP port 18000, streaming Listener (LDS), Route (RDS), Cluster (CDS), and Endpoint (EDS) updates dynamically without proxy reloads.
+- **Type-Safe Policy Attachment**: Extends core Gateway API capabilities through typed, schema-validated CRDs:
+  - `BackendTrafficPolicy`: Configures circuit breaking, connection timeouts, active health checks, and retry mechanisms.
+  - `SecurityPolicy`: Enforces OIDC authorization flows, JWT validation, CORS, and WebAssembly (Wasm) filter injection.
+  - `ClientTrafficPolicy`: Controls client-side TCP keep-alives, HTTP/2 settings, and TLS ciphers.
+
+---
+
+### Diagram 6: Kong Gateway & Kuma Mesh Hybrid Topology
+
+<details>
+<summary><b>Diagram 6: Kong Gateway & Kuma Mesh Hybrid Topology (Click to Expand / Collapse)</b></summary>
+
+```mermaid
+flowchart TD
+    Consumer(["&nbsp;&nbsp;&nbsp;&nbsp;External API Consumer / Client&nbsp;&nbsp;&nbsp;&nbsp;"]) -->|"HTTPS :443"| KongGW["&nbsp;&nbsp;&nbsp;&nbsp;Kong Gateway Edge (OpenResty / NGINX)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(C-Core + Lua Radix Router + Gateway API)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    
+    subgraph KongEdgePlane ["&nbsp;&nbsp;API Management & Productization Tier&nbsp;&nbsp;"]
+        KongGW --> PluginEngine["&nbsp;&nbsp;&nbsp;&nbsp;Kong Plugin Engine&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(KeyAuth -> RateLimiting -> Developer Portal)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    end
+    
+    subgraph KumaMeshPlane ["&nbsp;&nbsp;Kuma Service Mesh Fabric (Envoy Data Plane)&nbsp;&nbsp;"]
+        KumaCP["&nbsp;&nbsp;&nbsp;&nbsp;Kuma Global / Zone Control Plane&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(mTLS CA & Dynamic Routing Policies)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        PluginEngine --> KumaProxy1["&nbsp;&nbsp;&nbsp;&nbsp;Kuma Ingress Envoy Sidecar&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Embedded DNS on Port 15053)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        KumaCP -.->|"xDS Policy Sync"| KumaProxy1
+        
+        KumaProxy1 -->|"mTLS + TrafficRoute"| KumaProxy2["&nbsp;&nbsp;&nbsp;&nbsp;Target Kuma Envoy Sidecar&nbsp;&nbsp;&nbsp;&nbsp;"]
+        KumaCP -.->|"xDS Policy Sync"| KumaProxy2
+    end
+    
+    subgraph HybridBackends ["&nbsp;&nbsp;Hybrid Multi-Zone Workloads&nbsp;&nbsp;"]
+        KumaProxy2 --> PodBackend["&nbsp;&nbsp;&nbsp;&nbsp;Kubernetes Microservice Pod&nbsp;&nbsp;&nbsp;&nbsp;"]
+        KumaProxy1 -.->|"Cross-Zone / Bare Metal"| VMBackend["&nbsp;&nbsp;&nbsp;&nbsp;External Virtual Machine (Bare-Metal)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    end
+
+    classDef consumer fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
+    classDef kong fill:#003366,stroke:#002244,stroke-width:2px,color:#fff;
+    classDef kuma fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
+    classDef work fill:#e67700,stroke:#a35400,stroke-width:2px,color:#fff;
+
+    class Consumer consumer;
+    class KongGW,PluginEngine kong;
+    class KumaCP,KumaProxy1,KumaProxy2 kuma;
+    class PodBackend,VMBackend work;
+```
+
+</details>
+
+#### Kong & Kuma Architecture Breakdown
+- **Unified Edge-to-Mesh Productization**: Bridges enterprise North-South API management (monetization, developer portals, OAuth2/OIDC, and API key authentication) with East-West service mesh encryption and routing.
+- **Embedded Sidecar DNS Engine (`*.mesh`)**: Kuma sidecar proxies run an embedded DNS server on UDP/TCP port 15053. Applications resolve services using the `.mesh` top-level domain (e.g., `payment.mesh`), which resolves transparently without modifying cluster CoreDNS configurations or requiring external stub domains.
+- **Hybrid Multi-Zone & Virtual Machine Support**: Kuma's distributed control plane architecture synchronizes policies between a Global Control Plane and decentralized Zone Control Planes, natively supporting workloads running inside Kubernetes, on AWS EC2/bare-metal Linux VMs, and across hybrid cloud boundaries.
+- **Resource Footprint & Operational Complexity**: The combination represents the most feature-rich but also the most resource-intensive deployment in the ecosystem, pairing OpenResty (NGINX + LuaJIT) at the edge with Envoy sidecars across workloads.
+
+---
+
+### Diagram 7: Dual-Plane FQDN Routing Paradigms (Transparent In-Cluster vs. Split-Horizon Ingress)
+
+<details>
+<summary><b>Diagram 7: Dual-Plane FQDN Routing Paradigms (Transparent In-Cluster vs. Split-Horizon Ingress) (Click to Expand / Collapse)</b></summary>
+
+```mermaid
+flowchart TB
+    subgraph ApproachA ["&nbsp;&nbsp;Approach A: Transparent In-Cluster DNS Interception&nbsp;&nbsp;"]
+        direction TB
+        PodA["&nbsp;&nbsp;&nbsp;&nbsp;Client Pod in Cluster&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;Calls: http://backend.internal.corp/api&nbsp;&nbsp;"]
+        OCPDNS["&nbsp;&nbsp;&nbsp;&nbsp;OpenShift CoreDNS (dns-default)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;Evaluates spec.servers zone forwarding&nbsp;&nbsp;"]
+        InfraDNS["&nbsp;&nbsp;&nbsp;&nbsp;Secondary Resolver (infra-dns)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;CoreDNS rewrite plugin maps to ClusterIP&nbsp;&nbsp;"]
+        TraefikA["&nbsp;&nbsp;&nbsp;&nbsp;Traefik Edge / Ingress Router&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;Matches Host(`backend.internal.corp`)&nbsp;&nbsp;"]
+        DestA["&nbsp;&nbsp;&nbsp;&nbsp;Target Microservice Pods&nbsp;&nbsp;&nbsp;&nbsp;"]
+
+        PodA -->|"1. Standard DNS Query"| OCPDNS
+        OCPDNS -->|"2. Forwards internal.corp:53"| InfraDNS
+        InfraDNS -->|"3. Returns Traefik VIP"| PodA
+        PodA -->|"4. Direct HTTP Request"| TraefikA
+        TraefikA -->|"5. L7 Routed Traffic"| DestA
+    end
+
+    subgraph ApproachB ["&nbsp;&nbsp;Approach B: Split-Horizon Ingress via Traefik Service&nbsp;&nbsp;"]
+        direction TB
+        PodB["&nbsp;&nbsp;&nbsp;&nbsp;Client Pod in Cluster&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;Calls: https://traefik.traefik-system.svc:8443&nbsp;&nbsp;<br/>&nbsp;&nbsp;Header: Host: service-b.apps.cluster.local&nbsp;&nbsp;"]
+        NativeDNS["&nbsp;&nbsp;&nbsp;&nbsp;Native OpenShift CoreDNS&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;Resolves *.svc.cluster.local natively&nbsp;&nbsp;"]
+        TraefikB["&nbsp;&nbsp;&nbsp;&nbsp;Traefik Edge / Internal Listener&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;Terminates mTLS + Matches Host Header&nbsp;&nbsp;"]
+        DestB["&nbsp;&nbsp;&nbsp;&nbsp;Target Microservice Pods&nbsp;&nbsp;&nbsp;&nbsp;"]
+
+        PodB -->|"1. Standard svc Query"| NativeDNS
+        NativeDNS -->|"2. Returns Traefik ClusterIP"| PodB
+        PodB -->|"3. HTTPS + Client Cert + Host Header"| TraefikB
+        TraefikB -->|"4. Verified mTLS & Routed Traffic"| DestB
+    end
+
+    classDef app fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
+    classDef dns fill:#7048e8,stroke:#5f3dc4,stroke-width:2px,color:#fff;
+    classDef router fill:#24A1C1,stroke:#18687d,stroke-width:2px,color:#fff;
+    classDef dest fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
+
+    class PodA,PodB app;
+    class OCPDNS,InfraDNS,NativeDNS dns;
+    class TraefikA,TraefikB router;
+    class DestA,DestB dest;
+```
+
+</details>
+
+#### FQDN Resolution Comparative Analysis
+- **The CoreDNS Immutability Constraint (OpenShift 4.14–4.20+)**: In managed OpenShift environments, the `openshift-dns` operator reconciles `dns-default` continuously. Any direct manual edits to the cluster Corefile are automatically reverted within seconds, preventing arbitrary upstream zone overrides inside the core resolver.
+- **Approach A (Transparent In-Cluster Resolution)**:
+  - *Mechanics*: Configures `DNS.operator.openshift.io/default` with a `spec.servers` zone forwarding block for `internal.corp`, directing queries to an unprivileged secondary CoreDNS instance (`infra-dns`). The secondary resolver uses the `rewrite` plugin to point the FQDN to the Traefik ClusterIP.
+  - *Pros*: Completely transparent to application code. Workloads call standard URLs (`http://backend.internal.corp/api`) with no special headers or environment-specific targets.
+  - *Cons*: Requires cluster-admin privileges to patch the OpenShift DNS Operator.
+- **Approach B (Split-Horizon Ingress via Traefik Service)**:
+  - *Mechanics*: Demonstrated in the companion repository [traefik-fqdn-management-poc-openshift-aws](https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws). Workloads explicitly target Traefik's native Kubernetes Service (`traefik-loadbalancer.traefik-system.svc.cluster.local:8443`) while providing the target FQDN inside the HTTP `Host` header and client TLS certificate.
+  - *Pros*: Requires **zero** DNS operator configuration, zero secondary CoreDNS deployments, and zero cluster-admin privileges. All manifests deploy within unprivileged tenant namespaces.
+  - *Cons*: Workload clients must configure explicit gateway target URLs and host headers.
+
+---
+
+### Diagram 8: Enterprise Platform Decision Tree & Scenario Recommendation Flowchart
+
+<details>
+<summary><b>Diagram 8: Enterprise Platform Decision Tree & Scenario Recommendation Flowchart (Click to Expand / Collapse)</b></summary>
+
+```mermaid
+flowchart TD
+    Start(["&nbsp;&nbsp;&nbsp;&nbsp;Evaluate Enterprise Networking Requirements&nbsp;&nbsp;&nbsp;&nbsp;"]) --> Q1{"&nbsp;&nbsp;Scope: Edge Ingress Only or East-West Mesh?&nbsp;&nbsp;"}
+    
+    Q1 -->|"Edge Ingress Only"| QEdge{"&nbsp;&nbsp;Primary Driver: API Mgmt, Standard, or Lightweight?&nbsp;&nbsp;"}
+    QEdge -->|"Lightweight, Fast, Proven"| RecTraefik["&nbsp;&nbsp;&nbsp;&nbsp;RECOMMENDATION: Traefik Proxy v3&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• 45MB RAM, low latency, rich middlewares&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Native Gateway API v1 conformance&nbsp;&nbsp;"]
+    QEdge -->|"Pure CNCF Reference Standard"| RecEG["&nbsp;&nbsp;&nbsp;&nbsp;RECOMMENDATION: Envoy Gateway&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Official community Gateway API controller&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Extensible policy attachments (xDS v3)&nbsp;&nbsp;"]
+    QEdge -->|"Full API Lifecycle & Monetization"| RecKong["&nbsp;&nbsp;&nbsp;&nbsp;RECOMMENDATION: Kong Gateway&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Developer portal, API keys, plugin ecosystem&nbsp;&nbsp;<br/>&nbsp;&nbsp;• OpenResty / NGINX C-core engine&nbsp;&nbsp;"]
+    
+    Q1 -->|"Full East-West Service Mesh"| QMesh{"&nbsp;&nbsp;Platform & Performance Constraints?&nbsp;&nbsp;"}
+    QMesh -->|"Linux Kernel 5.10+, Telco, Wire-Speed"| RecCilium["&nbsp;&nbsp;&nbsp;&nbsp;RECOMMENDATION: Cilium eBPF Mesh&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Kernel socket short-circuiting (sockops)&nbsp;&nbsp;<br/>&nbsp;&nbsp;• WireGuard encryption, Hubble deep observability&nbsp;&nbsp;"]
+    QMesh -->|"OpenShift / Multi-Tenant / Decoupled L4/L7"| RecIstio["&nbsp;&nbsp;&nbsp;&nbsp;RECOMMENDATION: Istio Ambient Mode&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Red Hat OSSM 3.x native direction&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Rust ztunnel (L4) + opt-in Waypoint Envoy (L7)&nbsp;&nbsp;"]
+    QMesh -->|"Lightweight Sidecars, Memory-Sensitive, Rust"| RecLinkerd["&nbsp;&nbsp;&nbsp;&nbsp;RECOMMENDATION: Linkerd (Buoyant)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Ultra-low memory (20-30MB/pod), zero-config mTLS&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Note: Commercial dual-track licensing (2.15+)&nbsp;&nbsp;"]
+    QMesh -->|"Hybrid Multi-Cloud + Bare-Metal VMs"| RecKuma["&nbsp;&nbsp;&nbsp;&nbsp;RECOMMENDATION: Kong Mesh / Kuma&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Multi-zone control planes across VMs and K8s&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Integrated DNS server (*.mesh on port 15053)&nbsp;&nbsp;"]
+
+    classDef start fill:#343a40,stroke:#212529,stroke-width:2px,color:#fff;
+    classDef question fill:#f59f00,stroke:#d9480f,stroke-width:2px,color:#fff;
+    classDef recTraefik fill:#24A1C1,stroke:#18687d,stroke-width:2px,color:#fff;
+    classDef recEG fill:#7048e8,stroke:#5f3dc4,stroke-width:2px,color:#fff;
+    classDef recKong fill:#003366,stroke:#002244,stroke-width:2px,color:#fff;
+    classDef recCilium fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
+    classDef recIstio fill:#1971c2,stroke:#114d84,stroke-width:2px,color:#fff;
+    classDef recLinkerd fill:#20c997,stroke:#099268,stroke-width:2px,color:#fff;
+    classDef recKuma fill:#845ef7,stroke:#5f3dc4,stroke-width:2px,color:#fff;
+
+    class Start start;
+    class Q1,QEdge,QMesh question;
+    class RecTraefik recTraefik;
+    class RecEG recEG;
+    class RecKong recKong;
+    class RecCilium recCilium;
+    class RecIstio recIstio;
+    class RecLinkerd recLinkerd;
+    class RecKuma recKuma;
+```
+
+</details>
+
+#### Strategic Decision Framework
+- **Edge Ingress Selection**:
+  - Choose **Traefik Proxy v3** when memory efficiency, low latency, and rapid operational onboarding are paramount.
+  - Choose **Envoy Gateway** when adhering strictly to upstream CNCF standards and dynamic xDS v3 policy attachments without vendor lock-in.
+  - Choose **Kong Gateway** when enterprise API governance, monetization, consumer self-service, and a broad Lua/Wasm plugin marketplace are business requirements.
+- **Service Mesh Selection**:
+  - Choose **Cilium eBPF Mesh** on modern Linux kernels (5.10+) when wire-speed throughput and sub-millisecond latency (Fintech/Telco/AI) outweigh L7 application complexity.
+  - Choose **Istio Ambient Mode** for enterprise multi-tenant platforms (OpenShift, ROSA, EKS) seeking the industry standard OSSM 3.x direction with decoupled node L4 security and opt-in L7 waypoints.
+  - Choose **Linkerd** if dedicated sidecars are required with minimal memory overhead (Rust micro-proxy) and commercial support is budgeted.
+  - Choose **Kong Mesh (Kuma)** for complex multi-zone topologies spanning heterogeneous Kubernetes clusters and legacy bare-metal virtual machines.
+
 ---
 
 ## 6. Repository Structure
@@ -324,6 +660,8 @@ cloudnative-ingress-mesh-lab/
 ├── docs/                     # Comprehensive architectural deep dives
 │   ├── ARCHITECTURE.md       # Multi-layer packet flow analyses and tradeoffs
 │   ├── FQDN_ROUTING.md       # Dual-plane (N-S & E-W) FQDN routing across mesh & non-mesh
+│   ├── EXTENDED_SOLUTIONS.md # Deep dive on Linkerd, Envoy Gateway, Kong & Kuma
+│   ├── SCENARIOS_AND_RECOMMENDATIONS.md # 6 enterprise scenarios, TCO, and decision guide
 │   ├── LAB_CILIUM.md         # Step-by-step automated PoC: Kernel-level eBPF Gateway & Mesh
 │   ├── LAB_ISTIO_AMBIENT.md  # Step-by-step automated PoC: Sidecarless Istio Ambient
 │   └── LAB_TRAEFIK_EDGE.md   # Step-by-step automated PoC: Gateway API-native Edge Router

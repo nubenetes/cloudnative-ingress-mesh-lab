@@ -1,4 +1,4 @@
-[🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | [FQDN Routing](FQDN_ROUTING.md) | **Lab 1: Cilium** | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
+[🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | [FQDN Routing](FQDN_ROUTING.md) | [Extended Solutions](EXTENDED_SOLUTIONS.md) | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | **Lab 1: Cilium** | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
 
 ---
 
@@ -390,4 +390,4 @@ hubble observe --verdict DROPPED --follow
 
 ---
 
-⬅️ Previous: [FQDN-Driven Routing](FQDN_ROUTING.md) | 🏠 [Home](../README.md) | ➡️ Next: [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md)
+⬅️ Previous: [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | 🏠 [Home](../README.md) | ➡️ Next: [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md)

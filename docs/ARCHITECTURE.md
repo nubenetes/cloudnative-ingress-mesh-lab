@@ -1,4 +1,4 @@
-[🏠 Home / README](../README.md) | **Architecture Deep Dive** | [FQDN Routing](FQDN_ROUTING.md) | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
+[🏠 Home / README](../README.md) | **Architecture Deep Dive** | [FQDN Routing](FQDN_ROUTING.md) | [Extended Solutions](EXTENDED_SOLUTIONS.md) | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
 
 ---
 
@@ -34,6 +34,9 @@ This document provides a principal-level engineering dissection of the data plan
 ### 1.1 The Legacy Container Network Stack Bottleneck
 In traditional Kubernetes networking (and sidecar-based service meshes like Istio 1.x or Linkerd 2.x), a single HTTP request between two pods on the same worker node incurs severe TCP/IP traversal overhead:
 
+<details>
+<summary><b>Diagram 1.1: Legacy Container Network Stack Traversal (Click to Expand / Collapse)</b></summary>
+
 ```
 App Container A (Socket)
   │ (Traverse Network Stack 1)
@@ -64,6 +67,8 @@ Pod B Loopback Interface (`lo`)
   ▼
 App Container B (Socket)
 ```
+</details>
+
 **Total Network Tax:** 4 TCP/IP stack traversals, 4 context switches across network namespaces, 2 iptables/conntrack evaluations, and 2 user-space proxy hops.
 
 ---
@@ -71,6 +76,9 @@ App Container B (Socket)
 ### 1.2 Cilium eBPF Socket-Layer Short-Circuiting (`sockops`)
 
 Cilium bypasses the TCP/IP stack entirely for local pod-to-pod traffic by operating at the Linux kernel socket layer via BPF cgroup hooks (`sock_ops`) and stream verdict programs (`sk_msg`).
+
+<details>
+<summary><b>Diagram 1.2: Cilium eBPF Socket-Layer Short-Circuiting (sockops) (Click to Expand / Collapse)</b></summary>
 
 ```
 Pod A: App Container (Userspace)                   Pod B: App Container (Userspace)
@@ -96,6 +104,7 @@ Pod A: App Container (Userspace)                   Pod B: App Container (Userspa
 │  6. Bypasses TCP stack, qdisc, veth pair, netfilter, iptables, & conntrack   │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
+</details>
 
 #### Kernel Mechanics:
 1. **Socket Attachment**: When a container initiates a TCP connection (`connect()`), the cgroup-attached eBPF program (`BPF_PROG_TYPE_SOCK_OPS`) is triggered upon socket state transitions:
@@ -119,6 +128,9 @@ Pod A: App Container (Userspace)                   Pod B: App Container (Userspa
 
 Istio Ambient discards the monolithic sidecar model by dividing service mesh responsibilities into two independent planes:
 
+<details>
+<summary><b>Diagram 1.3: Istio Ambient Split-Plane Architecture (Click to Expand / Collapse)</b></summary>
+
 ```
 [ Workload Pod A ]
        │ (Standard veth / loopback)
@@ -131,6 +143,7 @@ Istio Ambient discards the monolithic sidecar model by dividing service mesh res
                                                                                ▼
                                                                      [ Workload Pod B ]
 ```
+</details>
 
 #### Layer 4 (Transport): `ztunnel`
 - **Identity & Protocol**: Implemented as a lean, memory-safe Rust daemonset running on each node (~150MB total footprint per node).
@@ -360,6 +373,9 @@ FQDN-based routing behaves fundamentally differently across edge gateways and se
 
 ## 4. Architectural Summary Diagram
 
+<details>
+<summary><b>Diagram 4.1: Cloud-Native Ingress & Mesh Architectural Ecosystem (Click to Expand / Collapse)</b></summary>
+
 ```
                         ┌────────────────────────────────────────────────────────┐
                         │          Cloud-Native Ingress & Mesh Ecosystem         │
@@ -375,6 +391,7 @@ FQDN-based routing behaves fundamentally differently across edge gateways and se
 │ • Linux sockops    │   │ • Native OpenShift OSSM 3 │   │ • Strict zero-trust│   │ • Declarative filters │
 └────────────────────┘   └───────────────────────────┘   └────────────────────┘   └───────────────────────┘
 ```
+</details>
 
 ---
 
@@ -411,4 +428,4 @@ FQDN-based routing behaves fundamentally differently across edge gateways and se
 
 ---
 
-[🏠 Home / Overview](../README.md) | ➡️ Next: [FQDN-Driven Routing Architecture](FQDN_ROUTING.md)
+[🏠 Home / Overview](../README.md) | [FQDN-Driven Routing](FQDN_ROUTING.md) | [Extended Solutions](EXTENDED_SOLUTIONS.md) | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | ➡️ Next: [Lab 1: Cilium](LAB_CILIUM.md)
