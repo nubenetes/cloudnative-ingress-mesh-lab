@@ -9,6 +9,11 @@
 
 ---
 
+![Portada del Newsletter: La Gran Batalla de Ingress y Service Mesh](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/cover_newsletter_es.png)  
+*🔍 [Ver Imagen de Portada en Alta Resolución (1200x630)](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/cover_newsletter_es.png)*
+
+---
+
 > ⚠️ **Aviso de Contenido Generado por IA y Pruebas en Entornos Reales**  
 > *Este análisis arquitectónico y guía de referencia fue generado por **Gemini 3.8 Flash** en base a estándares oficiales cloud-native y patrones arquitectónicos consolidados. NO ha sido probado en un entorno de producción real. Todas las arquitecturas, manifiestos YAML y estrategias de despliegue deben ser revisados, auditados y probados en entornos de staging o sandbox aislados antes de su adopción empresarial.*
 
