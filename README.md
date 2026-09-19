@@ -580,51 +580,51 @@ flowchart TD
 <summary><b>Diagram 7: Dual-Plane FQDN Routing Paradigms (Transparent In-Cluster vs. Split-Horizon Ingress) (Click to Expand / Collapse)</b></summary>
 
 ```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 460, "nodeSpacing": 45, "rankSpacing": 45}}}%%
 flowchart TD
-    subgraph ApproachA ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;APPROACH A: Transparent In-Cluster DNS Interception (cloudnative-ingress-mesh-lab)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
-        PodA["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Workload Client Pod</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Direct Call to Business FQDN:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;backend.internal.corp/api&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Standard OS getaddrinfo&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Zero Proxy Configuration&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph ApproachA ["APPROACH A: Transparent In-Cluster DNS Interception (cloudnative-ingress-mesh-lab)"]
+        PodA["<b>Workload Client Pod</b><br/><br/>• Direct Call to Business FQDN:<br/>&nbsp;&nbsp;<b>http://backend.internal.corp/api</b><br/>• Standard OS getaddrinfo resolution<br/>• Zero In-Pod Proxy Configuration"]
         
-        OCPDNS["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>OpenShift Cluster DNS</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• CoreDNS (dns-default)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Evaluates spec.servers rules&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Matches: internal.corp&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Forwards to infra-dns:53&nbsp;&nbsp;&nbsp;&nbsp;"]
+        OCPDNS["<b>OpenShift Cluster DNS</b><br/><br/>• CoreDNS cluster resolver (dns-default)<br/>• Evaluates spec.servers forwarding rules<br/>• Matches domain: <b>internal.corp</b><br/>• Forwards query to infra-dns:53"]
         
-        InfraDNS["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Secondary CoreDNS (infra-dns)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• In-Cluster Resolver Pods&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Executes rewrite regex rule&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Maps FQDN to ClusterIP VIP&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Returns Traefik ClusterIP&nbsp;&nbsp;&nbsp;&nbsp;"]
+        InfraDNS["<b>Secondary CoreDNS (infra-dns)</b><br/><br/>• Dedicated in-cluster resolver pods<br/>• Executes Corefile rewrite regex rule<br/>• Maps FQDN to Traefik ClusterIP VIP<br/>• Returns VIP to Client Pod"]
         
-        TraefikA["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Traefik v3 Ingress Router</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Listens on ClusterIP VIP&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Matches IngressRoute Host:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Host(`backend.internal.corp`)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Applies Middleware Chain&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(RateLimit, Auth, Headers)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        TraefikA["<b>Traefik v3 Ingress Router</b><br/><br/>• Listens on internal ClusterIP VIP<br/>• Matches IngressRoute Host rule:<br/>&nbsp;&nbsp;<b>Host('backend.internal.corp')</b><br/>• Applies Middleware security chain<br/>&nbsp;&nbsp;(RateLimit, Auth, Security Headers)"]
         
-        DestA["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Target Microservice Pods</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Workloads (v1 / v2 Canary)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Receives L7 Routed Traffic&nbsp;&nbsp;&nbsp;&nbsp;"]
+        DestA["<b>Target Microservice Pods</b><br/><br/>• Upstream workloads (v1 / v2 Canary)<br/>• Receives L7 routed HTTP traffic"]
 
         PodA -->|"1. Resolves backend FQDN"| OCPDNS
-        OCPDNS -->|"2. Forward to infra-dns:53"| InfraDNS
-        InfraDNS -->|"3. Returns Traefik VIP"| PodA
+        OCPDNS -->|"2. Forwards to infra-dns:53"| InfraDNS
+        InfraDNS -->|"3. Returns Traefik ClusterIP VIP"| PodA
         PodA -->|"4. Sends HTTP to Traefik VIP"| TraefikA
         TraefikA -->|"5. Proxies to backend pods"| DestA
     end
 
-    DestA ~~~ PodB
+    DestA ~~~ ApproachB
 
-    subgraph ApproachB ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;APPROACH B: Split-Horizon Ingress via Traefik Service (traefik-fqdn-management-poc)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
-        PodB["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Workload Pod (service-a)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Calls Traefik Native Service:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;traefik-loadbalancer&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.traefik-system.svc:8443&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Injects HTTP Host Header:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;service-b.apps.cluster.local&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Presents Client mTLS Cert&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph ApproachB ["APPROACH B: Split-Horizon Ingress via Traefik Service (traefik-fqdn-management-poc)"]
+        PodB["<b>Workload Pod (service-a)</b><br/><br/>• Calls Traefik Native Service:<br/>&nbsp;&nbsp;<b>traefik-loadbalancer.traefik-system.svc:8443</b><br/>• Injects HTTP Host Header:<br/>&nbsp;&nbsp;<b>Host: service-b.apps.cluster.local</b><br/>• Presents Client mTLS Certificate"]
         
-        NativeDNS["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Native OpenShift CoreDNS</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• CoreDNS (dns-default)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Resolves *.svc.cluster.local&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 100% Native Resolution&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 0% DNS Operator Patches&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Returns Traefik ClusterIP&nbsp;&nbsp;&nbsp;&nbsp;"]
+        NativeDNS["<b>Native OpenShift CoreDNS</b><br/><br/>• CoreDNS cluster resolver (dns-default)<br/>• Resolves *.svc.cluster.local out-of-the-box<br/>• 100% Native Kubernetes resolution<br/>• 0% DNS Operator patches required<br/>• Returns Traefik Service ClusterIP VIP"]
         
-        TraefikB["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Traefik v3 Edge Router</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Port :8443 Internal Listener&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Terminates Strict mTLS:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;RequireAndVerifyClientCert&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Matches HTTP Host Header&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Enforces Pod CIDR Allowlist&nbsp;&nbsp;&nbsp;&nbsp;"]
+        TraefikB["<b>Traefik v3 Edge Router</b><br/><br/>• Port :8443 Internal Gateway Listener<br/>• Terminates Strict mTLS:<br/>&nbsp;&nbsp;<b>RequireAndVerifyClientCert</b><br/>• Matches incoming HTTP Host Header<br/>• Enforces Pod CIDR network allowlist"]
         
-        DestB["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Target Pods (service-b)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Upstream Endpoints (:8443)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Authenticated via mTLS&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Network-Policy Isolated&nbsp;&nbsp;&nbsp;&nbsp;"]
+        DestB["<b>Target Pods (service-b)</b><br/><br/>• Upstream service endpoints (:8443)<br/>• Authenticated via mutual TLS (mTLS)<br/>• Isolated via NetworkPolicy"]
 
-        PodB -->|"1. Resolves traefik svc"| NativeDNS
-        NativeDNS -->|"2. Returns Traefik Service IP"| PodB
-        PodB -->|"3. Connects: Cert + Host"| TraefikB
-        TraefikB -->|"4. Verifies mTLS & Routes"| DestB
+        PodB <-->|"1. Resolves traefik svc & 2. Gets ClusterIP VIP"| NativeDNS
+        PodB -->|"3. Connects: mTLS Cert + Host Header"| TraefikB
+        TraefikB -->|"4. Verifies mTLS & Routes Traffic"| DestB
     end
 
-    classDef app fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
-    classDef dns fill:#7048e8,stroke:#5f3dc4,stroke-width:2px,color:#fff;
-    classDef router fill:#24A1C1,stroke:#18687d,stroke-width:2px,color:#fff;
-    classDef dest fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
+    classDef app fill:#343a40,stroke:#212529,stroke-width:2px,color:#fff,min-width:380px;
+    classDef dns fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff,min-width:380px;
+    classDef router fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff,min-width:380px;
+    classDef target fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff,min-width:380px;
 
     class PodA,PodB app;
     class OCPDNS,InfraDNS,NativeDNS dns;
     class TraefikA,TraefikB router;
-    class DestA,DestB dest;
+    class DestA,DestB target;
 ```
 
 </details>
