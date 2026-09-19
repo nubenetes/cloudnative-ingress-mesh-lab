@@ -37,6 +37,7 @@
 | **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** | Multi-layer packet flow analyses, Linux `sockops` vs Envoy proxies, OpenShift SCCs |
 | **[FQDN_ROUTING.md](docs/FQDN_ROUTING.md)** | Dual-plane (N-S & E-W) FQDN routing across mesh & non-mesh architectures |
 | **[GATEWAY_API_WITHOUT_TRAEFIK.md](docs/GATEWAY_API_WITHOUT_TRAEFIK.md)** | Gateway API without Traefik: OpenShift Route limitations, Istio Ambient, Envoy GW, Cilium |
+| **[GATEWAY_API_WITH_TRAEFIK.md](docs/GATEWAY_API_WITH_TRAEFIK.md)** | Gateway API with Traefik: ExtensionRef middlewares, PROXY protocol v2, zero-sidecar East-West FQDNs, OpenShift restricted-v2 |
 | **[EXTENDED_SOLUTIONS.md](docs/EXTENDED_SOLUTIONS.md)** | Architectural deep dives on Linkerd (Rust), Envoy Gateway, and Kong Gateway + Kuma |
 | **[SCENARIOS_AND_RECOMMENDATIONS.md](docs/SCENARIOS_AND_RECOMMENDATIONS.md)** | 6 Enterprise scenarios, TCO benchmarks, blast radius analysis, and migration playbooks |
 | **[LAB_CILIUM.md](docs/LAB_CILIUM.md)** | Automated PoC: Kernel-level eBPF Gateway & Mesh, Canary, Hubble observability |
@@ -699,6 +700,7 @@ cloudnative-ingress-mesh-lab/
 │   ├── ARCHITECTURE.md       # Multi-layer packet flow analyses and tradeoffs
 │   ├── FQDN_ROUTING.md       # Dual-plane (N-S & E-W) FQDN routing across mesh & non-mesh
 │   ├── GATEWAY_API_WITHOUT_TRAEFIK.md # Gateway API without Traefik: OpenShift Route & non-mesh alternatives
+│   ├── GATEWAY_API_WITH_TRAEFIK.md    # Gateway API with Traefik: ExtensionRef, zero-sidecar East-West, OpenShift
 │   ├── EXTENDED_SOLUTIONS.md # Deep dive on Linkerd, Envoy Gateway, Kong & Kuma
 │   ├── SCENARIOS_AND_RECOMMENDATIONS.md # 6 enterprise scenarios, TCO, and decision guide
 │   ├── LAB_CILIUM.md         # Step-by-step automated PoC: Kernel-level eBPF Gateway & Mesh

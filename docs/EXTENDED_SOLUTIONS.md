@@ -1,4 +1,4 @@
-[🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | [FQDN Routing](FQDN_ROUTING.md) | [Gateway API without Traefik](GATEWAY_API_WITHOUT_TRAEFIK.md) | **Extended Solutions** | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
+[🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | [FQDN Routing](FQDN_ROUTING.md) | [Gateway API without Traefik](GATEWAY_API_WITHOUT_TRAEFIK.md) | [Gateway API with Traefik](GATEWAY_API_WITH_TRAEFIK.md) | **Extended Solutions** | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
 
 ---
 
@@ -524,4 +524,4 @@ spec:
 
 ---
 
-⬅️ Previous: [Gateway API without Traefik](GATEWAY_API_WITHOUT_TRAEFIK.md) | 🏠 [Home](../README.md) | ➡️ Next: [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md)
+⬅️ Previous: [Gateway API without Traefik](GATEWAY_API_WITHOUT_TRAEFIK.md) | [Gateway API with Traefik](GATEWAY_API_WITH_TRAEFIK.md) | 🏠 [Home](../README.md) | ➡️ Next: [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md)

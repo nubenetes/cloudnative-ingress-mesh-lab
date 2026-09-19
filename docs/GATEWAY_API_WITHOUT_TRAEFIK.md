@@ -1,4 +1,4 @@
-[🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | [FQDN Routing](FQDN_ROUTING.md) | [Extended Solutions](EXTENDED_SOLUTIONS.md) | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | **Gateway API without Traefik** | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
+[🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | [FQDN Routing](FQDN_ROUTING.md) | [Extended Solutions](EXTENDED_SOLUTIONS.md) | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | **Gateway API without Traefik** | [Gateway API with Traefik](GATEWAY_API_WITH_TRAEFIK.md) | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
 
 ---
 
@@ -11,6 +11,9 @@ A common misconception among platform engineers evaluating cloud-native architec
 Gateway API is an open, vendor-neutral Kubernetes standard maintained by the **Kubernetes SIG-Network community**. Traefik is merely one of over fifteen independent controllers that implement this standard.
 
 Furthermore, in enterprise platforms like **Red Hat OpenShift (4.14 – 4.20+)**, traditional OpenShift `Route` (`route.openshift.io/v1`) is increasingly **not an option** for modern microservice architectures.
+
+> [!TIP]
+> **Companion Guide Available**: For the comprehensive guide on implementing Kubernetes Gateway API **with Traefik Proxy v3** (including ExtensionRef middlewares, PROXY protocol v2, zero-sidecar East-West FQDN hairpinning, and OpenShift `restricted-v2` SCC deployment), see [**docs/GATEWAY_API_WITH_TRAEFIK.md**](GATEWAY_API_WITH_TRAEFIK.md).
 
 This guide clarifies:
 1. **The Standard vs. Controller separation**: Why Gateway API does not depend on Traefik or any single vendor.
@@ -946,5 +949,5 @@ flowchart TD
 
 ---
 
-[🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | [FQDN Routing](FQDN_ROUTING.md) | [Extended Solutions](EXTENDED_SOLUTIONS.md) | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | **Gateway API without Traefik** | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
+[🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | [FQDN Routing](FQDN_ROUTING.md) | [Extended Solutions](EXTENDED_SOLUTIONS.md) | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | **Gateway API without Traefik** | [Gateway API with Traefik](GATEWAY_API_WITH_TRAEFIK.md) | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
 
