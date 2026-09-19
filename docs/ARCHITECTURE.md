@@ -72,26 +72,28 @@ App Container B (Socket)
 Cilium bypasses the TCP/IP stack entirely for local pod-to-pod traffic by operating at the Linux kernel socket layer via BPF cgroup hooks (`sock_ops`) and stream verdict programs (`sk_msg`).
 
 ```
-Pod A: App Container (Userspace)
-   │ write(fd, buf, len)
-   ▼
-Kernel Socket A (`struct sock *sk_A`)
-   │
-   │ ┌─────────────────────────────────────────────────────────────┐
-   │ │ Linux Kernel: BPF sock_ops / sk_msg (Cilium)                │
-   │ │                                                             │
-   │ │ 1. TCP Handshake intercepted by BPF_SOCK_OPS_ACTIVE_ESTABLISHED   │
-   │ │ 2. Socket metadata mapped in BPF Map: `cilium_sock_ops`     │
-   │ │ 3. Key: {SrcIP, DstIP, SrcPort, DstPort, Family}            │
-   │ │ 4. On write: BPF_SK_MSG_VERDICT intercepts stream data      │
-   │ │ 5. Calls: `bpf_msg_redirect_hash(&cilium_sock_ops, &key)`    │
-   │ │ 6. Payload copied directly to peer socket receive queue!   │
-   │ └─────────────────────────────────────────────────────────────┘
-   ▼
-Kernel Socket B (`struct sock *sk_B`)
-   ▲
-   │ read(fd, buf, len)
-Pod B: App Container (Userspace)
+Pod A: App Container (Userspace)                   Pod B: App Container (Userspace)
+               │                                                  ▲
+               │ write(fd, buf, len)                              │ read(fd, buf, len)
+               ▼                                                  │
+┌──────────────┴────────────────┐              ┌──────────────────┴────────────┐
+│        Kernel Socket A        │              │        Kernel Socket B        │
+│      (struct sock *sk_A)      │              │      (struct sock *sk_B)      │
+└──────────────┬────────────────┘              └──────────────────▲────────────┘
+               │                                                  │
+               │ [BPF_SK_MSG_VERDICT]                             │ bpf_msg_redirect_hash()
+               │ (intercepts sendmsg)                             │ enqueues to sk_receive_queue
+               ▼                                                  │
+┌──────────────┴──────────────────────────────────────────────────┴────────────┐
+│                     Linux Kernel: eBPF Socket Layer (Cilium)                 │
+│                                                                              │
+│  1. Handshake intercepted by BPF_SOCK_OPS_ACTIVE_ESTABLISHED                 │
+│  2. Socket metadata registered in BPF Map: `cilium_sock_ops` (SOCKHASH)      │
+│  3. Hash Key: {SrcIP, DstIP, SrcPort, DstPort, NetNS Cookie}                 │
+│  4. Data stream intercepted at sendmsg() before TCP/IP stack traversal       │
+│  5. Kernel helper redirects buffer directly into Socket B receive queue      │
+│  6. Bypasses TCP stack, qdisc, veth pair, netfilter, iptables, & conntrack   │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 #### Kernel Mechanics:
