@@ -18,6 +18,9 @@ This document provides definitive configurations across **Red Hat OpenShift (4.1
   - [1.2 Enterprise Scenarios & Use Cases](#12-enterprise-scenarios--use-cases)
 - [2. Distribution-Specific DNS Interception & Settings](#2-distribution-specific-dns-interception--settings)
   - [2.1 Red Hat OpenShift (4.14 – 4.20+): The DNS Operator Paradigm](#21-red-hat-openshift-414--420-the-dns-operator-paradigm)
+  - [2.1.1 Architectural Reality Check: Do Traefik IngressRoutes & Middlewares Eliminate CoreDNS?](#211-architectural-reality-check-do-traefik-ingressroutes--middlewares-eliminate-coredns)
+  - [2.1.2 Custom FQDNs Lacking OpenShift's Default `*.apps.<clustername>`](#212-custom-fqdns-lacking-openshifts-default-appsclustername)
+  - [2.1.3 The 4 Operational Paths for OpenShift 4.20+ (Comparison & Decision Guide)](#213-the-4-operational-paths-for-openshift-420-comparison--decision-guide)
   - [2.2 OpenShift Pattern A: DNS Operator Zone Forwarding to In-Cluster Resolver](#22-openshift-pattern-a-dns-operator-zone-forwarding-to-in-cluster-resolver)
   - [2.3 OpenShift Pattern B: Pod-Level `hostAliases` & `dnsConfig` (Unprivileged)](#23-openshift-pattern-b-pod-level-hostaliases--dnsconfig-unprivileged)
   - [2.4 Vanilla Kubernetes, Kind & SUSE RKE2: CoreDNS `rewrite` Plugin](#24-vanilla-kubernetes-kind--suse-rke2-coredns-rewrite-plugin)
@@ -63,6 +66,137 @@ In OpenShift, cluster DNS is managed by the **Cluster DNS Operator (`dns.operato
 - **Supported Architecture**: Red Hat officially supports configuring **Zone Forwarding (`spec.servers[].forwardPlugin`)** pointing to an internal or external resolver.
 
 ---
+
+### 2.1.1 Architectural Reality Check: Do Traefik IngressRoutes & Middlewares Eliminate CoreDNS?
+
+A frequent misconception in cloud-native architecture is:
+> *"If I configure a Traefik v3 `IngressRoute` matching `Host(\`backend.internal.corp\`)` and attach Traefik Middlewares, I don't need to add entries to CoreDNS or deploy a secondary resolver in OpenShift 4.20+."*
+
+**The Truth: It depends strictly on transit direction (North-South vs. East-West).**
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        NORTH-SOUTH TRANSIT (External -> Cluster)                       │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ [External / Corporate Client]                                                          │
+│        │                                                                               │
+│        │ 1. Resolves `backend.internal.corp` via Corporate/Public DNS (Infoblox/Route53)│
+│        │    -> Returns OpenShift Ingress VIP / Load Balancer IP                        │
+│        ▼                                                                               │
+│ [OpenShift Ingress VIP / Traefik Gateway (L7 Reverse Proxy)]                           │
+│        │ 2. Receives TCP SYN -> Completes TLS Handshake -> Inspects HTTP Host header   │
+│        │ 3. Matches `Host(`backend.internal.corp`)` -> Routes to backend pods          │
+│                                                                                        │
+│ 🎯 CoreDNS Status: 0% CoreDNS interaction! OpenShift CoreDNS is NEVER queried.         │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        EAST-WEST TRANSIT (Pod A -> Pod B inside Cluster)               │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ [Client Pod A in OpenShift]                                                            │
+│        │                                                                               │
+│        │ 1. Executes: `curl http://backend.internal.corp/api`                          │
+│        │ 2. Linux OS resolver (`glibc`/`musl` `getaddrinfo`) consults `/etc/resolv.conf│
+│        │    -> Queries OpenShift cluster DNS (`172.30.0.10:53`)                        │
+│        ▼                                                                               │
+│ [OpenShift DNS Operator / CoreDNS]                                                     │
+│        │                                                                               │
+│        ├── IF `backend.internal.corp` is UNKNOWN to CoreDNS:                           │
+│        │   └── CoreDNS returns `NXDOMAIN` (Name Error)                                │
+│        │       └── Pod A OS aborts: `curl: (6) Could not resolve host`                │
+│        │           🚨 Traefik is NEVER reached! L7 Middlewares NEVER execute!          │
+│        │                                                                               │
+│        └── IF DNS resolves to Traefik ClusterIP (via Forwarder, hostAliases, or Corp): │
+│            └── Pod A opens TCP connection to Traefik ClusterIP                         │
+│                └── Traefik matches `Host(`backend.internal.corp`)` & applies Middlewares│
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Why Traefik Middlewares Cannot Bypass DNS Resolution (The OSI Model Boundary)
+1. **Layer 3/4 Socket Precedence**: Traefik is an application-layer (Layer 7) reverse proxy. An HTTP request or middleware pipeline cannot physically execute until a TCP three-way handshake (SYN, SYN-ACK, ACK) completes.
+2. **Client-Side Resolution**: To send a TCP SYN packet to Traefik, the Linux kernel network stack in Pod A requires a destination IPv4/IPv6 address. When the application calls `http://backend.internal.corp`, the OS runtime invokes `getaddrinfo(3)`, which evaluates `/etc/nsswitch.conf` (`hosts: files dns`).
+3. **Traefik Isolation**: Traefik cannot intercept the packet until traffic actually arrives at its listening socket. Without DNS resolution or `/etc/hosts` mapping, the kernel drops or aborts the request before any packet leaves the node.
+
+---
+
+### 2.1.2 Custom FQDNs Lacking OpenShift's Default `*.apps.<clustername>`
+
+In standard OpenShift installations, routes automatically generate names under the default wildcard domain:
+`<route-name>-<namespace>.apps.<cluster-name>.<base-domain>`
+
+When enterprise architecture mandates custom FQDNs without the `.apps` prefix (e.g., `payment.corp.internal` or `api.customer.com`), two primary configuration approaches apply:
+
+#### Approach 1: Native OpenShift Route with Custom `spec.host`
+OpenShift natively supports arbitrary custom domains on Routes without requiring `.apps.<clustername>`:
+
+```yaml
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: payment-custom-route
+  namespace: production
+  annotations:
+    haproxy.router.openshift.io/timeout: 30s
+spec:
+  # Explicitly overrides the default .apps.<cluster-name> domain
+  host: payment.corp.internal
+  to:
+    kind: Service
+    name: payment-service
+    weight: 100
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+    certificate: |-
+      -----BEGIN CERTIFICATE-----
+      MIID... (Corporate / Custom CA Certificate)
+      -----END CERTIFICATE-----
+    key: |-
+      -----BEGIN PRIVATE KEY-----
+      MIIE...
+      -----END PRIVATE KEY-----
+```
+*Key OpenShift Guardrail:* Custom hosts on Routes are supported out of the box. Ensure the OpenShift IngressController has `routeAdmission.wildcardPolicy: WildcardsAllowed` if wildcard custom domains (`*.corp.internal`) are used.
+
+#### Approach 2: Traefik v3 IngressRoute (Edge & East-West Gateway)
+When using Traefik v3 as the edge gateway on OpenShift (bypassing or fronting the default HAProxy Router), the `IngressRoute` matches the arbitrary FQDN directly:
+
+```yaml
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: payment-traefik-route
+  namespace: production
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`payment.corp.internal`) && PathPrefix(`/v1`)
+      kind: Rule
+      services:
+        - name: payment-service
+          port: 8080
+      middlewares:
+        - name: edge-rate-limit
+  tls:
+    secretName: corp-internal-tls-secret
+```
+
+---
+
+### 2.1.3 The 4 Operational Paths for OpenShift 4.20+ (Comparison & Decision Guide)
+
+To route custom FQDNs lacking `.apps.<clustername>` on OpenShift without violating the DNS Operator immutability, choose from the four authoritative patterns:
+
+| Operational Pattern | OpenShift CoreDNS Modified? | Operator Privileges Needed? | Scope | Maintenance Burden | Recommended When |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **1. Upstream Corporate Split-Horizon DNS** | **0% (Zero)** | **None** on Cluster | Entire Cluster | Managed in Enterprise Infoblox / Route53 / BIND | Enterprise DNS team can create `payment.corp.internal` pointing to cluster Ingress VIP. |
+| **2. Pod-Level `hostAliases`** | **0% (Zero)** | **None** (Standard developer permissions) | Per-Pod / Per-Deployment | Moderate (Must maintain deployment manifests) | Fast testing, non-admin environments, or isolated microservice pairs. |
+| **3. In-Cluster Resolver Forwarding (Pattern A)** | **Zone Forward only** (via `spec.servers`) | **Yes** (`cluster-admin` to patch DNS Operator) | Cluster-wide | Low (Deploys lightweight secondary CoreDNS once) | Enterprise internal FQDNs that don't exist in corporate upstream DNS. |
+| **4. Mesh-Native Capture (Cilium / Istio)** | **0% (Zero, Bypassed)** | **None** on DNS (Handled by Mesh CNI/ztunnel) | Mesh-wide | Very Low (Declarative `ServiceEntry` / eBPF) | Cilium eBPF or Istio Ambient is already active in the cluster. |
 
 ### 2.2 OpenShift Pattern A: DNS Operator Zone Forwarding to In-Cluster Resolver (Recommended)
 
@@ -537,6 +671,14 @@ spec:
   *Official guide for setting up stub domains and custom server blocks in Azure Kubernetes Service.*
 - **Google Cloud GKE Documentation: Configuring Kube-DNS / Cloud DNS**: [https://cloud.google.com/kubernetes-engine/docs/how-to/kube-dns](https://cloud.google.com/kubernetes-engine/docs/how-to/kube-dns)  
   *Upstream instructions for `kube-dns` ConfigMap `stubDomains` and VPC-native Cloud DNS routing.*
+- **Red Hat OpenShift Route Configuration Documentation**: [https://docs.openshift.com/container-platform/latest/networking/routes/route-configuration.html](https://docs.openshift.com/container-platform/latest/networking/routes/route-configuration.html)  
+  *Authoritative Red Hat documentation explaining arbitrary custom domain (`spec.host`) configuration without `.apps.<cluster-name>`.*
+- **Kubernetes Documentation: Adding Entries to Pod /etc/hosts with HostAliases**: [https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/](https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/)  
+  *Upstream reference on injecting static IP to hostname mappings at pod runtime bypassing CoreDNS.*
+- **Linux man-pages: nsswitch.conf(5) & getaddrinfo(3)**: [https://man7.org/linux/man-pages/man5/nsswitch.conf.5.html](https://man7.org/linux/man-pages/man5/nsswitch.conf.5.html)  
+  *POSIX/Linux specification detailing resolver precedence (files before dns) and L3/L4 TCP socket setup.*
+- **Traefik Proxy IngressRoute Documentation**: [https://doc.traefik.io/traefik/routing/providers/kubernetes-crd/](https://doc.traefik.io/traefik/routing/providers/kubernetes-crd/)  
+  *Official Traefik v3 documentation for IngressRoute CRD, entryPoints, and rule matching.*
 - **Cilium Security Policy: DNS-Based (`toFQDNs`) Rules**: [https://docs.cilium.io/en/stable/security/policy/language/#dns-based](https://docs.cilium.io/en/stable/security/policy/language/#dns-based)  
   *Architecture guide for in-kernel DNS proxy inspection, pattern matching, and dynamic IP set synchronization.*
 - **Istio Traffic Management: DNS Proxying Architecture**: [https://istio.io/latest/docs/ops/configuration/traffic-management/dns-proxy/](https://istio.io/latest/docs/ops/configuration/traffic-management/dns-proxy/)  
