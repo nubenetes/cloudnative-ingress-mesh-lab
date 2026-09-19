@@ -1,0 +1,17 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: lab-cilium
+nodes:
+  - role: control-plane
+    extraMounts:
+      - hostPath: /sys/fs/bpf
+        containerPath: /sys/fs/bpf
+        propagation: Bidirectional
+  - role: worker
+    extraMounts:
+      - hostPath: /sys/fs/bpf
+        containerPath: /sys/fs/bpf
+        propagation: Bidirectional
+networking:
+  disableDefaultCNI: true
+  kubeProxyMode: "none"

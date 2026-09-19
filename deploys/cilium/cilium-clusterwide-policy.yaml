@@ -1,0 +1,34 @@
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: secure-backend-zero-trust
+spec:
+  description: "Enforce eBPF L7 HTTP inspection and strict mutual authentication for backend services"
+  endpointSelector:
+    matchLabels:
+      app: backend
+      io.kubernetes.pod.namespace: lab-cilium
+  ingress:
+    # Allow legitimate ingress from the Cilium Gateway
+    - fromEndpoints:
+        - matchLabels:
+            io.cilium.k8s.policy.serviceaccount: cilium-gw
+      authentication:
+        mode: required
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              - method: "GET"
+                path: "^/api.*$"
+    # Allow legitimate client-tester inside lab-cilium
+    - fromEndpoints:
+        - matchLabels:
+            app: client-tester
+            io.kubernetes.pod.namespace: lab-cilium
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP

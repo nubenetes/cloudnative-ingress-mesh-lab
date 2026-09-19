@@ -1,0 +1,10 @@
+# Logs and temporary files
+*.log
+*.tmp
+.DS_Store
+
+# Helm local cache
+*.tgz
+
+# Local Kind kubeconfig
+*kubeconfig*

@@ -1,0 +1,54 @@
+# Cilium Production Values for Gateway API and eBPF Service Mesh
+kubeProxyReplacement: true
+k8sServiceHost: lab-cilium-control-plane
+k8sServicePort: 6443
+
+# eBPF Socket Layer Acceleration & Host Routing
+routingMode: native
+autoDirectNodeRoutes: true
+bpf:
+  masquerade: true
+  tproxy: true
+
+# Socket-level load balancing (sockops bypassing TCP/IP)
+socketLB:
+  enabled: true
+  hostNamespaceOnly: false
+
+# Gateway API & Envoy L7 Ingress Controller
+gatewayAPI:
+  enabled: true
+  secretsNamespace:
+    create: true
+    name: cilium-secrets
+
+loadBalancer:
+  l7:
+    backend: envoy
+
+# Enable Hubble Observability Fabric
+hubble:
+  enabled: true
+  metrics:
+    enabled:
+      - dns:query;ignoreAAAA
+      - drop
+      - tcp
+      - flow
+      - port-distribution
+      - icmp
+      - http
+    serviceMonitor:
+      enabled: false
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+
+# Zero-Trust Mutual Authentication (SPIRE/mTLS)
+authentication:
+  mutual:
+    spire:
+      enabled: true
+      install:
+        enabled: true

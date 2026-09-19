@@ -1,0 +1,70 @@
+# Traefik v3 Production Helm Configuration for Kubernetes Gateway API
+globalArguments:
+  - "--global.checknewversion=false"
+  - "--global.sendanonymoususage=false"
+
+# Gateway API Provider Configuration
+providers:
+  kubernetesCRD:
+    enabled: true
+    allowCrossNamespace: true
+  kubernetesGateway:
+    enabled: true
+  kubernetesIngress:
+    enabled: false
+
+# Gateway API Experimental Flags
+experimental:
+  kubernetesGateway:
+    enabled: true
+
+# Edge Ports Configuration
+ports:
+  web:
+    port: 8000
+    exposedPort: 80
+    nodePort: 80
+    protocol: TCP
+  websecure:
+    port: 8443
+    exposedPort: 443
+    nodePort: 443
+    protocol: TCP
+  metrics:
+    port: 9100
+    exposedPort: 9100
+    protocol: TCP
+
+# Service Architecture
+service:
+  enabled: true
+  type: NodePort
+
+# Observability Fabric
+metrics:
+  prometheus:
+    enabled: true
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+    entryPoint: metrics
+
+# Resource Allocations
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+
+# Security Context for Kubernetes and OpenShift
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  capabilities:
+    drop:
+      - ALL

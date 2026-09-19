@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: client-tester-sa
+  namespace: lab-mesh
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client-tester
+  namespace: lab-mesh
+  labels:
+    app: client-tester
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: client-tester
+  template:
+    metadata:
+      labels:
+        app: client-tester
+    spec:
+      serviceAccountName: client-tester-sa
+      containers:
+        - name: tester
+          image: curlimages/curl:8.7.1
+          command: ["/bin/sh", "-c"]
+          args: ["while true; do sleep 3600; done"]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: attacker-pod
+  namespace: attacker
+  labels:
+    app: rogue-client
+    security.policy: untrusted
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rogue-client
+  template:
+    metadata:
+      labels:
+        app: rogue-client
+    spec:
+      containers:
+        - name: attacker
+          image: curlimages/curl:8.7.1
+          command: ["/bin/sh", "-c"]
+          args: ["while true; do sleep 3600; done"]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

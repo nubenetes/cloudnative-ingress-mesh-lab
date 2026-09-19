@@ -1,0 +1,94 @@
+# OpenShift SecurityContextConstraints for Traefik v3 Edge Gateway
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: traefik-edge-scc
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: true
+allowPrivilegeEscalation: false
+allowPrivilegedContainer: false
+allowedCapabilities: []
+defaultAddCapabilities: []
+requiredDropCapabilities:
+  - ALL
+fsGroup:
+  type: MustRunAs
+  ranges:
+    - min: 65532
+      max: 65535
+readOnlyRootFilesystem: true
+runAsUser:
+  type: MustRunAs
+  uid: 65532
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
+users:
+  - system:serviceaccount:traefik-system:traefik
+---
+# ClusterRole and ClusterRoleBinding for OpenShift Route / Ingress Controller Integration
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: traefik-gateway-controller
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - services
+      - endpoints
+      - secrets
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - gateway.networking.k8s.io
+    resources:
+      - gatewayclasses
+      - gateways
+      - httproutes
+      - tlsroutes
+      - tcproutes
+      - referencegrants
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - gateway.networking.k8s.io
+    resources:
+      - gatewayclasses/status
+      - gateways/status
+      - httproutes/status
+    verbs:
+      - update
+      - patch
+  - apiGroups:
+      - traefik.io
+    resources:
+      - middlewares
+      - ingressroutes
+      - tlsoptions
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: traefik-gateway-controller-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: traefik-gateway-controller
+subjects:
+  - kind: ServiceAccount
+    name: traefik
+    namespace: traefik-system

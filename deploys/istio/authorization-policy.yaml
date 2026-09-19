@@ -1,0 +1,36 @@
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default-strict-mtls
+  namespace: lab-istio
+spec:
+  mtls:
+    mode: STRICT
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: backend-zero-trust-authz
+  namespace: lab-istio
+spec:
+  selector:
+    matchLabels:
+      app: backend
+  action: ALLOW
+  rules:
+    # Rule 1: Allow legitimate frontend workload
+    - from:
+        - source:
+            principals: ["cluster.local/ns/lab-istio/sa/frontend-sa"]
+      to:
+        - operation:
+            methods: ["GET"]
+            paths: ["/api/*"]
+    # Rule 2: Allow ingress gateway
+    - from:
+        - source:
+            principals: ["cluster.local/ns/lab-istio/sa/istio-ingress-sa"]
+      to:
+        - operation:
+            methods: ["GET"]
+            paths: ["/api/*"]

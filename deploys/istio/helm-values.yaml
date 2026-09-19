@@ -1,0 +1,43 @@
+# Istio Ambient Mode Production Configuration
+global:
+  hub: docker.io/istio
+  tag: 1.23.0
+  meshID: lab-mesh
+  network: primary-network
+
+# istiod Control Plane Settings
+pilot:
+  env:
+    PILOT_ENABLE_ALPHA_GATEWAY_API: "true"
+    PILOT_ENABLE_HBONE: "true"
+    ENABLE_CA_SERVER: "true"
+  autoscaleEnabled: true
+  autoscaleMin: 1
+  autoscaleMax: 3
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# ztunnel DaemonSet Settings (L4 Node Data Plane)
+ztunnel:
+  env:
+    L4_TRANSPORT: "HBONE"
+    LOG_LEVEL: "info"
+    RUST_BACKTRACE: "1"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Istio CNI DaemonSet
+cni:
+  ambient:
+    enabled: true
+  logLevel: info
