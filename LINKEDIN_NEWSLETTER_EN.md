@@ -308,9 +308,9 @@ For platform teams ready to migrate from legacy Ingress or OpenShift Routes to m
 
 For platform engineers who prefer deep-dive video walkthroughs, the architectural paradigms, lab implementations, and benchmarks analyzed in this newsletter are covered in detail across 4 dedicated video masterclasses on [**youtube.com/@nubenetes**](https://youtube.com/@nubenetes).
 
-> 💡 **Language & Audio Settings Note:** These videos were produced with **original Spanish audio** and feature **YouTube Multilingual Audio Tracks** / auto-dubbing. You can select your preferred listening language and subtitles directly in the YouTube player via **Settings (⚙️) ➔ Audio track**.
+> 💡 **Language & Audio Settings Note:** These videos and shorts feature **YouTube Multilingual Audio Tracks** / auto-dubbing (up to 21 languages available via **Settings (⚙️) ➔ Audio track**). Content with English titles was produced with **original English audio 🇺🇸**, while content with Spanish titles was produced with **original Spanish audio 🇪🇸**.
 
-1. 🎙️ [**Unified FQDN Routing with Traefik alternatives**](https://www.youtube.com/watch?v=xuDtcUZYeHU) *(8m 14s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
+1. 🎙️ [**Unified FQDN Routing with Traefik alternatives**](https://www.youtube.com/watch?v=xuDtcUZYeHU) *(8m 14s • Original: English 🇺🇸 • Multilingual Audio ⚙️)*  
    *Core Topic:* Achieving Unified FQDN routing for East-West and North-South traffic using Traefik alternatives (in-kernel eBPF Cilium vs. Istio Ambient mode) with zero pod sidecar tax, resolving the OpenShift CoreDNS immutability barrier, and comparing L4 TCP socket establishment with L7 HTTP proxying.
 2. 🎙️ [**Gateway API y FQDNs**](https://www.youtube.com/watch?v=vay32AcPJ9Q) *(8m 44s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
    *Core Topic:* The 2026 evolution of the Kubernetes Gateway API standard (`gateway.networking.k8s.io/v1`), dual-plane FQDN resolution (external ingress & internal microservices), and eliminating code-level conditionals across multi-cloud distros (EKS, AKS, GKE, ROSA).
@@ -321,12 +321,12 @@ For platform engineers who prefer deep-dive video walkthroughs, the architectura
 
 ### ⚡ Related YouTube Shorts (Quick 60–90 Second Deep Dives)
 
-- ⚡ [**How to Route East West unified FQDNs on OpenShift with Traefik or Gateway API**](https://www.youtube.com/shorts/_YufQ7kv2xM) *(1m 23s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*: Layer 7 split-horizon routing on OpenShift 4.x avoiding public NLB hairpinning.
+- ⚡ [**How to Route East West unified FQDNs on OpenShift with Traefik or Gateway API**](https://www.youtube.com/shorts/_YufQ7kv2xM) *(1m 23s • Original: English 🇺🇸 • Multilingual Audio ⚙️)*: Layer 7 split-horizon routing on OpenShift 4.x avoiding public NLB hairpinning.
 - ⚡ [**Cómo Enrutar Dominios Internos con Traefik con FQDN unificado**](https://www.youtube.com/shorts/ZNo0BCIXlbA) *(1m 34s • Audio Original: Español 🇪🇸 • Pistas Multilingües ⚙️)*: Microservice domain resolution without sidecars or CoreDNS modifications.
-- ⚡ [**The Ghost in the Server: East-West & Split-Brain DNS on Red Hat OpenShift 4.x**](https://www.youtube.com/shorts/LX_SLw5ovVo) *(0m 58s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*: Why internal calls traverse external NLBs and how L7 split-horizon ingress fixes it.
-- ⚡ [**How Split Brain DNS Keeps Traffic Hidden**](https://www.youtube.com/shorts/moT_HjQsuF4) *(1m 09s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*: Public WAF/NLB inspection vs. private ClusterIP direct resolution.
-- ⚡ [**Routing Internal URLs With Service Mesh**](https://www.youtube.com/shorts/go_sCgyASe4) *(1m 17s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*: Envoy/Cilium Layer 7 transparent interception and dynamic URL rewriting.
-- ⚡ [**Traefik CRDs vs Gateway API on OpenShift**](https://www.youtube.com/shorts/ZykBWmE9Gd8) *(1m 16s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*: Traefik IngressRoute vs. Kubernetes Gateway API HTTPRoute on OpenShift ROSA.
+- ⚡ [**The Ghost in the Server: East-West & Split-Brain DNS on Red Hat OpenShift 4.x**](https://www.youtube.com/shorts/LX_SLw5ovVo) *(0m 58s • Original: English 🇺🇸 • Multilingual Audio ⚙️)*: Why internal calls traverse external NLBs and how L7 split-horizon ingress fixes it.
+- ⚡ [**How Split Brain DNS Keeps Traffic Hidden**](https://www.youtube.com/shorts/moT_HjQsuF4) *(1m 09s • Original: English 🇺🇸 • Multilingual Audio ⚙️)*: Public WAF/NLB inspection vs. private ClusterIP direct resolution.
+- ⚡ [**Routing Internal URLs With Service Mesh**](https://www.youtube.com/shorts/go_sCgyASe4) *(1m 17s • Original: English 🇺🇸 • Multilingual Audio ⚙️)*: Envoy/Cilium Layer 7 transparent interception and dynamic URL rewriting.
+- ⚡ [**Traefik CRDs vs Gateway API on OpenShift**](https://www.youtube.com/shorts/ZykBWmE9Gd8) *(1m 16s • Original: English 🇺🇸 • Multilingual Audio ⚙️)*: Traefik IngressRoute vs. Kubernetes Gateway API HTTPRoute on OpenShift ROSA.
 
 ---
 

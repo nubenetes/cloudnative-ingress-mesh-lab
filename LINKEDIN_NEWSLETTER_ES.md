@@ -309,9 +309,9 @@ Para equipos de plataforma listos para migrar desde Ingress clásico u OpenShift
 
 Para los ingenieros de plataforma y arquitectos que prefieren explicaciones audiovisuales paso a paso, los conceptos arquitectónicos, laboratorios y comparativas de este boletín se analizan a fondo en 4 vídeos técnicos publicados en [**youtube.com/@nubenetes**](https://youtube.com/@nubenetes).
 
-> 💡 **Nota sobre Idioma y Ajustes de Audio:** Todos los vídeos fueron grabados con **audio original en español** y cuentan con soporte para **pistas de audio multilingües de YouTube** / doblaje automático. Puedes alternar el idioma de reproducción y subtítulos en la rueda de **Configuración (⚙️) ➔ Pista de audio** del reproductor de YouTube.
+> 💡 **Nota sobre Idioma y Ajustes de Audio:** Todos los vídeos y shorts cuentan con soporte para **pistas de audio multilingües de YouTube** / doblaje automático (hasta 21 idiomas seleccionables en **Configuración (⚙️) ➔ Pista de audio**). El idioma del audio original coincide con el título: aquellos con título en inglés cuentan con **audio original en inglés 🇺🇸**, mientras que los titulados en español fueron grabados con **audio original en español 🇪🇸**.
 
-1. 🎙️ [**Unified FQDN Routing with Traefik alternatives**](https://www.youtube.com/watch?v=xuDtcUZYeHU) *(8m 14s • Audio Original: Español 🇪🇸 • Pistas Multilingües ⚙️)*  
+1. 🎙️ [**Unified FQDN Routing with Traefik alternatives**](https://www.youtube.com/watch?v=xuDtcUZYeHU) *(8m 14s • Audio Original: Inglés 🇺🇸 • Pistas Multilingües ⚙️)*  
    *Enfoque:* Cómo alcanzar el FQDN unificado para tráfico Este-Oeste y Norte-Sur con alternativas a Traefik (Cilium eBPF e Istio Ambient) sin impuesto de memoria por pod (0 MB), resolviendo la inmutabilidad de CoreDNS en OpenShift y analizando el límite de Capa 4 vs. Capa 7.
 2. 🎙️ [**Gateway API y FQDNs**](https://www.youtube.com/watch?v=vay32AcPJ9Q) *(8m 44s • Audio Original: Español 🇪🇸 • Pistas Multilingües ⚙️)*  
    *Enfoque:* Evolución de Kubernetes Gateway API hacia 2026, resolución de FQDNs de doble plano (Ingress perimetral y llamadas entre microservicios) y eliminación de variables y condicionales en el código en plataformas multicloud (EKS, AKS, GKE, ROSA).
@@ -322,12 +322,12 @@ Para los ingenieros de plataforma y arquitectos que prefieren explicaciones audi
 
 ### ⚡ YouTube Shorts Relacionados (Píldoras Arquitectónicas de 60–90 Segundos)
 
-- ⚡ [**How to Route East West unified FQDNs on OpenShift with Traefik or Gateway API**](https://www.youtube.com/shorts/_YufQ7kv2xM) *(1m 23s • Audio Original: Español 🇪🇸 • Pistas Multilingües ⚙️)*: Enrutamiento Split-Horizon en Capa 7 en OpenShift 4.x evitando el hairpinning hacia el NLB público de AWS.
+- ⚡ [**How to Route East West unified FQDNs on OpenShift with Traefik or Gateway API**](https://www.youtube.com/shorts/_YufQ7kv2xM) *(1m 23s • Audio Original: Inglés 🇺🇸 • Pistas Multilingües ⚙️)*: Enrutamiento Split-Horizon en Capa 7 en OpenShift 4.x evitando el hairpinning hacia el NLB público de AWS.
 - ⚡ [**Cómo Enrutar Dominios Internos con Traefik con FQDN unificado**](https://www.youtube.com/shorts/ZNo0BCIXlbA) *(1m 34s • Audio Original: Español 🇪🇸 • Pistas Multilingües ⚙️)*: Resolución canónica para microservicios sin costes de sidecar ni alteraciones en CoreDNS.
-- ⚡ [**The Ghost in the Server: East-West & Split-Brain DNS on Red Hat OpenShift 4.x**](https://www.youtube.com/shorts/LX_SLw5ovVo) *(0m 58s • Audio Original: Español 🇪🇸 • Pistas Multilingües ⚙️)*: El problema del hairpinning oculto que añade 15–40ms de latencia y costes de egress en AWS.
-- ⚡ [**How Split Brain DNS Keeps Traffic Hidden**](https://www.youtube.com/shorts/moT_HjQsuF4) *(1m 09s • Audio Original: Español 🇪🇸 • Pistas Multilingües ⚙️)*: Inspección perimetral WAF/NLB frente a resolución directa por ClusterIP interno.
-- ⚡ [**Routing Internal URLs With Service Mesh**](https://www.youtube.com/shorts/go_sCgyASe4) *(1m 17s • Audio Original: Español 🇪🇸 • Pistas Multilingües ⚙️)*: Intercepción transparente en Capa 7 con Envoy/Cilium y reescritura dinámica de rutas.
-- ⚡ [**Traefik CRDs vs Gateway API on OpenShift**](https://www.youtube.com/shorts/ZykBWmE9Gd8) *(1m 16s • Audio Original: Español 🇪🇸 • Pistas Multilingües ⚙️)*: Duelo rápido entre Traefik IngressRoute y Kubernetes Gateway API HTTPRoute en OpenShift ROSA.
+- ⚡ [**The Ghost in the Server: East-West & Split-Brain DNS on Red Hat OpenShift 4.x**](https://www.youtube.com/shorts/LX_SLw5ovVo) *(0m 58s • Audio Original: Inglés 🇺🇸 • Pistas Multilingües ⚙️)*: El problema del hairpinning oculto que añade 15–40ms de latencia y costes de egress en AWS.
+- ⚡ [**How Split Brain DNS Keeps Traffic Hidden**](https://www.youtube.com/shorts/moT_HjQsuF4) *(1m 09s • Audio Original: Inglés 🇺🇸 • Pistas Multilingües ⚙️)*: Inspección perimetral WAF/NLB frente a resolución directa por ClusterIP interno.
+- ⚡ [**Routing Internal URLs With Service Mesh**](https://www.youtube.com/shorts/go_sCgyASe4) *(1m 17s • Audio Original: Inglés 🇺🇸 • Pistas Multilingües ⚙️)*: Intercepción transparente en Capa 7 con Envoy/Cilium y reescritura dinámica de rutas.
+- ⚡ [**Traefik CRDs vs Gateway API on OpenShift**](https://www.youtube.com/shorts/ZykBWmE9Gd8) *(1m 16s • Audio Original: Inglés 🇺🇸 • Pistas Multilingües ⚙️)*: Duelo rápido entre Traefik IngressRoute y Kubernetes Gateway API HTTPRoute en OpenShift ROSA.
 
 ---
 

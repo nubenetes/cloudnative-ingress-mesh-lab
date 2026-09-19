@@ -1313,9 +1313,9 @@ flowchart TD
 ### 🎬 Video Masterclasses & Architectural Sessions (YouTube @nubenetes)
 
 > [!NOTE]
-> **Multilingual Audio Settings:** All video masterclasses were generated with **original Spanish audio** and support **YouTube Multilingual Audio Tracks** / auto-dubbing. You can select your preferred listening language directly in the YouTube player via **Settings (⚙️) ➔ Audio track**.
+> **Multilingual Audio Settings:** All video masterclasses and shorts support **YouTube Multilingual Audio Tracks** / auto-dubbing (up to 21 languages available via **Settings (⚙️) ➔ Audio track**). Content with English titles has **original English audio 🇺🇸**, and content with Spanish titles has **original Spanish audio 🇪🇸**.
 
-- 🎙️ [**Unified FQDN Routing with Traefik alternatives** (8:14)](https://www.youtube.com/watch?v=xuDtcUZYeHU) *(Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
+- 🎙️ [**Unified FQDN Routing with Traefik alternatives** (8:14)](https://www.youtube.com/watch?v=xuDtcUZYeHU) *(Original: English 🇺🇸 • Multilingual Audio ⚙️)*  
   *In-kernel Cilium eBPF vs. Istio Ambient mode for Unified FQDN routing without sidecars, OpenShift CoreDNS immutability, and L4 vs. L7 mechanics.*
 - 🎙️ [**Gateway API y FQDNs** (8:44)](https://www.youtube.com/watch?v=vay32AcPJ9Q) *(Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
   *Kubernetes Gateway API v1.1 GA, dual-plane FQDN resolution, and overcoming environment drift across multi-cloud distros.*
@@ -1326,17 +1326,17 @@ flowchart TD
 
 #### ⚡ YouTube Video Shorts (Quick Architectural Concepts)
 
-- ⚡ [**How to Route East West unified FQDNs on OpenShift with Traefik or Gateway API** (1:23)](https://www.youtube.com/shorts/_YufQ7kv2xM) *(Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
+- ⚡ [**How to Route East West unified FQDNs on OpenShift with Traefik or Gateway API** (1:23)](https://www.youtube.com/shorts/_YufQ7kv2xM) *(Original: English 🇺🇸 • Multilingual Audio ⚙️)*  
   *Layer 7 split-horizon routing on OpenShift 4.x, avoiding hairpinning out to public AWS NLB, and overcoming CoreDNS immutability.*
 - ⚡ [**Cómo Enrutar Dominios Internos con Traefik con FQDN unificado** (1:34)](https://www.youtube.com/shorts/ZNo0BCIXlbA) *(Audio Original: Español 🇪🇸 • Pistas Multilingües ⚙️)*  
   *Enrutamiento de microservicios internos con dominio canónico idéntico al externo usando Traefik y Gateway API sin costes de sidecar.*
-- ⚡ [**The Ghost in the Server: East-West & Split-Brain DNS on Red Hat OpenShift 4.x** (0:58)](https://www.youtube.com/shorts/LX_SLw5ovVo) *(Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
+- ⚡ [**The Ghost in the Server: East-West & Split-Brain DNS on Red Hat OpenShift 4.x** (0m 58s)](https://www.youtube.com/shorts/LX_SLw5ovVo) *(Original: English 🇺🇸 • Multilingual Audio ⚙️)*  
   *Unveils the hidden hairpinning problem when internal pods query canonical domains, adding 15–40ms latency and AWS egress bills.*
-- ⚡ [**How Split Brain DNS Keeps Traffic Hidden** (1:09)](https://www.youtube.com/shorts/moT_HjQsuF4) *(Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
+- ⚡ [**How Split Brain DNS Keeps Traffic Hidden** (1m 09s)](https://www.youtube.com/shorts/moT_HjQsuF4) *(Original: English 🇺🇸 • Multilingual Audio ⚙️)*  
   *Explains split-horizon DNS: external callers traverse public WAF/NLB while internal cluster pods resolve directly to private ClusterIP.*
-- ⚡ [**Routing Internal URLs With Service Mesh** (1:17)](https://www.youtube.com/shorts/go_sCgyASe4) *(Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
+- ⚡ [**Routing Internal URLs With Service Mesh** (1m 17s)](https://www.youtube.com/shorts/go_sCgyASe4) *(Original: English 🇺🇸 • Multilingual Audio ⚙️)*  
   *How Layer 7 transparent proxying intercepts Host headers and rewrites destinations to in-cluster services without DNS hacks.*
-- ⚡ [**Traefik CRDs vs Gateway API on OpenShift** (1:16)](https://www.youtube.com/shorts/ZykBWmE9Gd8) *(Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
+- ⚡ [**Traefik CRDs vs Gateway API on OpenShift** (1m 16s)](https://www.youtube.com/shorts/ZykBWmE9Gd8) *(Original: English 🇺🇸 • Multilingual Audio ⚙️)*  
   *60-second showdown between Traefik native CRDs (IngressRoute) and Kubernetes Gateway API (HTTPRoute) on OpenShift ROSA.*
 
 ---
