@@ -395,17 +395,18 @@ To achieve transparent rewriting of `*.internal.corp` to Traefik v3 on OpenShift
 <summary><b>Diagram 2.3: OpenShift Pattern A - DNS Operator Zone Forwarding Flow (Click to Expand / Collapse)</b></summary>
 
 ```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 460, "nodeSpacing": 45, "rankSpacing": 45}}}%%
 flowchart TD
-    subgraph PatternA ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;OpenShift Pattern A: DNS Operator Zone Forwarding to In-Cluster Resolver&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
-        WorkloadPod["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Workload Client Pod</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Calls: http://backend.internal.corp&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Standard OS getaddrinfo&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Queries 172.30.0.10:53 (Cluster DNS)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph PatternA ["OpenShift Pattern A: DNS Operator Zone Forwarding to In-Cluster Resolver"]
+        WorkloadPod["<b>Workload Client Pod</b><br/><br/>• Calls: <b>http://backend.internal.corp</b><br/>• Standard POSIX getaddrinfo resolution<br/>• Queries Cluster CoreDNS: 172.30.0.10:53"]
         
-        DNSOperator["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>OpenShift CoreDNS (dns-default)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Managed by DNS Operator&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Matches spec.servers: internal.corp&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Forwards to infra-dns service IP:53&nbsp;&nbsp;&nbsp;&nbsp;"]
+        DNSOperator["<b>OpenShift CoreDNS (dns-default)</b><br/><br/>• Managed by cluster DNS Operator<br/>• Matches spec.servers zone: <b>internal.corp</b><br/>• Forwards to infra-dns Service IP:53"]
         
-        SecondaryDNS["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Secondary Resolver (infra-dns)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Unprivileged CoreDNS Deployment&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• rewrite name regex rule:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.*)\.internal\.corp ->&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;traefik.traefik-system.svc&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Returns Traefik ClusterIP VIP&nbsp;&nbsp;&nbsp;&nbsp;"]
+        SecondaryDNS["<b>Secondary Resolver (infra-dns)</b><br/><br/>• Unprivileged in-cluster CoreDNS deployment<br/>• rewrite regex rule: (.*).internal.corp -><br/>&nbsp;&nbsp;<b>traefik.traefik-system.svc.cluster.local</b><br/>• Returns Traefik ClusterIP VIP to Client"]
         
-        TraefikRouter["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Traefik v3 Ingress Router</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• VIP: 172.30.50.100 (ClusterIP)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• IngressRoute Host Match:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;backend.internal.corp&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Middleware Chain (Auth, Limit)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        TraefikRouter["<b>Traefik v3 Ingress Router</b><br/><br/>• Listens on ClusterIP: 172.30.50.100<br/>• Matches IngressRoute Host: <b>backend.internal.corp</b><br/>• Executes Middleware Chain (Auth, RateLimit)"]
         
-        TargetPod["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Target Service Endpoints</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Receives Layer 7 Routed HTTP Traffic&nbsp;&nbsp;&nbsp;&nbsp;"]
+        TargetPod["<b>Target Service Endpoints</b><br/><br/>• Workload pods (v1 / v2 Canary)<br/>• Receives Layer 7 Routed HTTP Traffic"]
 
         WorkloadPod -->|"1. DNS Query: backend.internal.corp"| DNSOperator
         DNSOperator -->|"2. Forward via spec.servers"| SecondaryDNS
@@ -414,10 +415,10 @@ flowchart TD
         TraefikRouter -->|"5. Proxies L7 Traffic"| TargetPod
     end
 
-    classDef client fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
-    classDef dns fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff;
-    classDef router fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff;
-    classDef target fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
+    classDef client fill:#343a40,stroke:#212529,stroke-width:2px,color:#fff,min-width:380px;
+    classDef dns fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff,min-width:380px;
+    classDef router fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff,min-width:380px;
+    classDef target fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff,min-width:380px;
 
     class WorkloadPod client;
     class DNSOperator,SecondaryDNS dns;
@@ -576,29 +577,30 @@ When developers lack cluster-admin permissions to patch the OpenShift DNS Operat
 <summary><b>Diagram 2.4: OpenShift Pattern B - Pod-Level hostAliases & dnsConfig (Click to Expand / Collapse)</b></summary>
 
 ```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 460, "nodeSpacing": 45, "rankSpacing": 45}}}%%
 flowchart TD
-    subgraph PatternB ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;OpenShift Pattern B: Pod-Level hostAliases & dnsConfig (Unprivileged)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
-        Kubelet["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Node Kubelet Daemon</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Reads Pod spec.hostAliases&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Mounts local /etc/hosts file&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Maps 172.30.50.100 to:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;backend.internal.corp&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph PatternB ["OpenShift Pattern B: Pod-Level hostAliases & dnsConfig (Unprivileged)"]
+        Kubelet["<b>Node Kubelet Daemon</b><br/><br/>• Reads Pod spec.hostAliases definition<br/>• Mounts in-container /etc/hosts file<br/>• Maps 172.30.50.100 -> <b>backend.internal.corp</b>"]
         
-        AppPod["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Application Container (consumer-app)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Calls: http://backend.internal.corp&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• glibc consults /etc/nsswitch.conf&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• files entry evaluated BEFORE dns!&nbsp;&nbsp;&nbsp;&nbsp;"]
+        AppPod["<b>Application Container (consumer-app)</b><br/><br/>• Calls: <b>http://backend.internal.corp</b><br/>• glibc consults /etc/nsswitch.conf<br/>• 'files' entry evaluated BEFORE 'dns'!"]
         
-        BypassedDNS["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>OpenShift Cluster CoreDNS</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 172.30.0.10:53 (Cluster DNS)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;🎯 100% BYPASSED! Zero queries emitted.&nbsp;&nbsp;&nbsp;&nbsp;"]
+        BypassedDNS["<b>OpenShift Cluster CoreDNS</b><br/><br/>• Service IP: 172.30.0.10:53 (Cluster DNS)<br/>🎯 <b>100% BYPASSED! Zero queries emitted.</b>"]
         
-        TraefikSvc["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Traefik Router VIP (172.30.50.100)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Direct TCP SYN Handshake&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Matches IngressRoute Host header&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Executes Middleware Pipeline&nbsp;&nbsp;&nbsp;&nbsp;"]
+        TraefikSvc["<b>Traefik Router VIP (172.30.50.100)</b><br/><br/>• Direct TCP SYN Handshake from Pod<br/>• Matches IngressRoute Host: <b>backend.internal.corp</b><br/>• Executes attached Middleware Pipeline"]
         
-        UpstreamApp["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Target Service Endpoints</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Receives Layer 7 Routed Traffic&nbsp;&nbsp;&nbsp;&nbsp;"]
+        UpstreamApp["<b>Target Service Endpoints</b><br/><br/>• Workload pods (v1 / v2 Canary)<br/>• Receives Layer 7 Routed HTTP Traffic"]
 
         Kubelet -->|"1. Injects /etc/hosts"| AppPod
-        AppPod -.->|"0% DNS queries"| BypassedDNS
+        AppPod -.->|"0% DNS queries (Bypassed)"| BypassedDNS
         AppPod -->|"2. Direct TCP connection"| TraefikSvc
         TraefikSvc -->|"3. Proxies L7 Traffic"| UpstreamApp
     end
 
-    classDef client fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
-    classDef dns fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff;
-    classDef router fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff;
-    classDef target fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
-    classDef bypassed fill:#868e96,stroke:#495057,stroke-dasharray: 5 5,color:#fff;
+    classDef client fill:#343a40,stroke:#212529,stroke-width:2px,color:#fff,min-width:380px;
+    classDef dns fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff,min-width:380px;
+    classDef router fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff,min-width:380px;
+    classDef target fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff,min-width:380px;
+    classDef bypassed fill:#868e96,stroke:#495057,stroke-dasharray: 5 5,color:#fff,min-width:380px;
 
     class AppPod client;
     class Kubelet dns;
@@ -658,25 +660,26 @@ In vanilla Kubernetes clusters (including Kind, K3s, kubeadm, and RKE2), CoreDNS
 <summary><b>Diagram 2.5: Vanilla Kubernetes / Kind / RKE2 CoreDNS rewrite Plugin (Click to Expand / Collapse)</b></summary>
 
 ```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 460, "nodeSpacing": 45, "rankSpacing": 45}}}%%
 flowchart TD
-    subgraph VanillaK8s ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Vanilla Kubernetes / Kind / RKE2: Native CoreDNS rewrite Plugin&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
-        PodV["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Workload Client Pod</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Calls: http://backend.internal.corp&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Standard UDP:53 query to CoreDNS&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph VanillaK8s ["Vanilla Kubernetes / Kind / RKE2: Native CoreDNS rewrite Plugin"]
+        PodV["<b>Workload Client Pod</b><br/><br/>• Calls: <b>http://backend.internal.corp</b><br/>• Standard UDP:53 query to CoreDNS<br/>• Zero client-side configuration needed"]
         
-        CoreDNS_Engine["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>CoreDNS Engine (kube-system)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Evaluates Corefile plugins in-memory&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Plugin: rewrite name regex&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.*)\.internal\.corp ->&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;traefik.traefik-system.svc&nbsp;&nbsp;&nbsp;&nbsp;"]
+        CoreDNS_Engine["<b>CoreDNS Engine (kube-system)</b><br/><br/>• Evaluates Corefile plugins in-memory<br/>• Plugin: <code>rewrite name regex (.*).internal.corp</code><br/>• Maps query to: <b>traefik.traefik-system.svc</b>"]
         
-        K8s_Plugin["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>CoreDNS kubernetes Plugin</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Resolves traefik.traefik-system.svc&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Returns Traefik ClusterIP VIP&nbsp;&nbsp;&nbsp;&nbsp;"]
+        K8s_Plugin["<b>CoreDNS kubernetes Plugin</b><br/><br/>• Resolves traefik.traefik-system.svc<br/>• Synthesizes authoritative A record response<br/>• Returns Traefik ClusterIP VIP to Pod"]
         
-        Traefik_Vanilla["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Traefik Edge / Ingress Gateway</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• IngressRoute Host Matching&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Forwarding to backend endpoints&nbsp;&nbsp;&nbsp;&nbsp;"]
+        Traefik_Vanilla["<b>Traefik Edge / Ingress Gateway</b><br/><br/>• IngressRoute / HTTPRoute Host matching<br/>• Enforces middlewares & Canary traffic splits<br/>• Forwarding to backend endpoints"]
 
         PodV -->|"1. Query: backend.internal.corp"| CoreDNS_Engine
         CoreDNS_Engine -->|"2. Regex rewrite in-memory"| K8s_Plugin
-        K8s_Plugin -->|"3. Synthesized A Record"| PodV
+        K8s_Plugin -->|"3. Synthesized A Record (VIP)"| PodV
         PodV -->|"4. Direct TCP to Traefik VIP"| Traefik_Vanilla
     end
 
-    classDef client fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
-    classDef dns fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff;
-    classDef router fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff;
+    classDef client fill:#343a40,stroke:#212529,stroke-width:2px,color:#fff,min-width:380px;
+    classDef dns fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff,min-width:380px;
+    classDef router fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff,min-width:380px;
 
     class PodV client;
     class CoreDNS_Engine,K8s_Plugin dns;
@@ -733,14 +736,15 @@ In hyperscaler-managed Kubernetes offerings, cluster DNS is managed as a platfor
 <summary><b>Diagram 2.6: Managed Cloud Distributions - EKS / AKS coredns-custom vs. GKE Cloud DNS (Click to Expand / Collapse)</b></summary>
 
 ```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 460, "nodeSpacing": 45, "rankSpacing": 45}}}%%
 flowchart TD
-    subgraph ManagedCloudPlane ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Managed Cloud Distributions: Native CoreDNS Extension & Interception&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
-        subgraph EKSAKSPlane ["&nbsp;&nbsp;AWS EKS & Azure AKS (coredns-custom Pattern)&nbsp;&nbsp;"]
-            ClientEKS["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>EKS / AKS Workload Pod</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Queries: backend.internal.corp&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph ManagedCloudPlane ["Managed Cloud Distributions: Native CoreDNS Extension & Interception"]
+        subgraph EKSAKSPlane ["AWS EKS & Azure AKS (coredns-custom Pattern)"]
+            ClientEKS["<b>EKS / AKS Workload Pod</b><br/><br/>• Queries: <b>backend.internal.corp</b><br/>• Standard UDP:53 in-pod query<br/>• Zero client modifications"]
             
-            CustomCM["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>coredns-custom ConfigMap</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Overrides internal.server block&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• rewrite name regex rule:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.*)\.internal\.corp -> traefik&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Survives AWS/Azure Managed Upgrades&nbsp;&nbsp;&nbsp;&nbsp;"]
+            CustomCM["<b>coredns-custom ConfigMap</b><br/><br/>• Overrides internal.server block<br/>• Plugin: <code>rewrite name regex (.*).internal.corp -> traefik.svc</code><br/>• Survives AWS & Azure managed add-on upgrades"]
             
-            ManagedCoreDNS["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Managed CoreDNS Daemon</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Imports coredns-custom automatically&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Resolves Traefik Service VIP&nbsp;&nbsp;&nbsp;&nbsp;"]
+            ManagedCoreDNS["<b>Managed CoreDNS Daemon</b><br/><br/>• Automatically imports custom blocks<br/>• Resolves Traefik Service ClusterIP VIP<br/>• Returns VIP to EKS/AKS Client Pod"]
 
             ClientEKS -->|"1. DNS Query"| CustomCM
             CustomCM -->|"2. Evaluates Plugin"| ManagedCoreDNS
@@ -749,21 +753,21 @@ flowchart TD
 
         EKSAKSPlane ~~~ GKEPlane
 
-        subgraph GKEPlane ["&nbsp;&nbsp;Google Cloud GKE (Cloud DNS vs. kube-dns stubDomains)&nbsp;&nbsp;"]
-            ClientGKE["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>GKE Workload Pod</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Queries: backend.internal.corp&nbsp;&nbsp;&nbsp;&nbsp;"]
+        subgraph GKEPlane ["Google Cloud GKE (Cloud DNS vs. kube-dns stubDomains)"]
+            ClientGKE["<b>GKE Workload Pod</b><br/><br/>• Queries: <b>backend.internal.corp</b><br/>• Targets Google Cloud infrastructure"]
             
-            GKEPathA["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>GCP Cloud DNS (VPC-Native)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Private Hosted Zone: internal.corp&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• High-availability Cloud Anycast VIP&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 0MB in-cluster DNS memory footprint&nbsp;&nbsp;&nbsp;&nbsp;"]
+            GKEPathA["<b>GCP Cloud DNS (VPC-Native)</b><br/><br/>• Private Hosted Zone: <b>internal.corp</b><br/>• High-availability Cloud Anycast VIP<br/>• 0MB in-cluster DNS memory footprint"]
             
-            GKEPathB["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>kube-dns stubDomains (Legacy)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• ConfigMap: kube-system/kube-dns&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Forwards to Traefik ClusterIP&nbsp;&nbsp;&nbsp;&nbsp;"]
+            GKEPathB["<b>kube-dns stubDomains (Legacy)</b><br/><br/>• ConfigMap: kube-system/kube-dns<br/>• Forwards upstream to Traefik ClusterIP"]
 
-            ClientGKE -->|"Recommended: VPC Scope"| GKEPathA
-            ClientGKE -.->|"Alternative: In-Cluster"| GKEPathB
+            ClientGKE -->|"Recommended: VPC Anycast Scope"| GKEPathA
+            ClientGKE -.->|"Alternative: In-Cluster Forward"| GKEPathB
         end
     end
 
-    classDef client fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
-    classDef dns fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff;
-    classDef cloud fill:#087f5b,stroke:#0b6246,stroke-width:2px,color:#fff;
+    classDef client fill:#343a40,stroke:#212529,stroke-width:2px,color:#fff,min-width:380px;
+    classDef dns fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff,min-width:380px;
+    classDef cloud fill:#087f5b,stroke:#0b6246,stroke-width:2px,color:#fff,min-width:380px;
 
     class ClientEKS,ClientGKE client;
     class CustomCM,ManagedCoreDNS,GKEPathB dns;
@@ -864,28 +868,29 @@ Once DNS is routed to Traefik, Traefik functions as an **East-West Internal Gate
 <summary><b>Diagram 3.1: Traefik v3 Dual-Plane L7 Router & Middleware Pipeline (Click to Expand / Collapse)</b></summary>
 
 ```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 460, "nodeSpacing": 45, "rankSpacing": 45}}}%%
 flowchart TD
-    subgraph TraefikDualPlane ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Traefik v3 Dual-Plane L7 Router & Middleware Pipeline&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
-        subgraph EntryPoints ["&nbsp;&nbsp;Traffic Ingress EntryPoints&nbsp;&nbsp;"]
-            EP_Internal["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Internal East-West (web)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Port :8000 / Cleartext or mTLS&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Internal microservice hairpin&nbsp;&nbsp;&nbsp;&nbsp;"]
-            EP_External["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>External North-South (websecure)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Port :8443 / TLS 1.3 Termination&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Corporate / Public SAN certs&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph TraefikDualPlane ["Traefik v3 Dual-Plane L7 Router & Middleware Pipeline"]
+        subgraph EntryPoints ["Traffic Ingress EntryPoints"]
+            EP_Internal["<b>Internal East-West (web)</b><br/><br/>• Port :8000 / Cleartext or mTLS<br/>• In-cluster microservice hairpin"]
+            EP_External["<b>External North-South (websecure)</b><br/><br/>• Port :8443 / TLS 1.3 Termination<br/>• Corporate / Public SAN certs"]
         end
 
-        subgraph IngressRouteTier ["&nbsp;&nbsp;Traefik IngressRoute Rule Matching&nbsp;&nbsp;"]
-            RouterMatch["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Rule Match Engine</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;Host(`backend.internal.corp`)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&& PathPrefix(`/api`)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        subgraph IngressRouteTier ["Traefik IngressRoute Rule Matching"]
+            RouterMatch["<b>Rule Match Engine</b><br/><br/>• Host: <b>backend.internal.corp</b><br/>• PathPrefix: <b>/api</b>"]
         end
 
-        subgraph MiddlewarePipeline ["&nbsp;&nbsp;Enterprise Middleware Execution Chain&nbsp;&nbsp;"]
-            MW_RateLimit["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>1. edge-rate-limit</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Token-bucket: avg 25, burst 50&nbsp;&nbsp;&nbsp;&nbsp;"]
-            MW_SecHeaders["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>2. security-headers</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• HSTS, FrameOptions, CSP headers&nbsp;&nbsp;&nbsp;&nbsp;"]
-            MW_CircuitBreaker["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>3. internal-circuit-breaker</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Tripped if P50 > 150ms || Err > 15%&nbsp;&nbsp;&nbsp;&nbsp;"]
+        subgraph MiddlewarePipeline ["Enterprise Middleware Execution Chain"]
+            MW_RateLimit["<b>1. edge-rate-limit</b><br/><br/>• Token-bucket: avg 25, burst 50"]
+            MW_SecHeaders["<b>2. security-headers</b><br/><br/>• HSTS, FrameOptions, CSP headers"]
+            MW_CircuitBreaker["<b>3. internal-circuit-breaker</b><br/><br/>• Tripped if Latency > 150ms || Err > 15%"]
             
             MW_RateLimit --> MW_SecHeaders --> MW_CircuitBreaker
         end
 
-        subgraph UpstreamCanary ["&nbsp;&nbsp;Canary Weighted Service Delivery&nbsp;&nbsp;"]
-            SvcV1["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>backend-v1 (Stable)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Weight: 90% Traffic Allocation&nbsp;&nbsp;&nbsp;&nbsp;"]
-            SvcV2["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>backend-v2 (Canary)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Weight: 10% Traffic Allocation&nbsp;&nbsp;&nbsp;&nbsp;"]
+        subgraph UpstreamCanary ["Canary Weighted Service Delivery"]
+            SvcV1["<b>backend-v1 (Stable)</b><br/><br/>• Weight: 90% Traffic Allocation"]
+            SvcV2["<b>backend-v2 (Canary)</b><br/><br/>• Weight: 10% Traffic Allocation"]
         end
 
         EP_Internal --> RouterMatch
@@ -895,10 +900,10 @@ flowchart TD
         MW_CircuitBreaker -->|"10% Traffic"| SvcV2
     end
 
-    classDef ep fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
-    classDef router fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff;
-    classDef mw fill:#e67700,stroke:#b05b00,stroke-width:2px,color:#fff;
-    classDef target fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
+    classDef ep fill:#343a40,stroke:#212529,stroke-width:2px,color:#fff,min-width:340px;
+    classDef router fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff,min-width:340px;
+    classDef mw fill:#e67700,stroke:#b05b00,stroke-width:2px,color:#fff,min-width:340px;
+    classDef target fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff,min-width:340px;
 
     class EP_Internal,EP_External ep;
     class RouterMatch router;
@@ -990,30 +995,31 @@ Cilium attaches eBPF programs to the pod's cgroup socket layer. When a container
 <summary><b>Diagram 4.1: Cilium eBPF In-Kernel DNS Interception & toFQDNs Security (Click to Expand / Collapse)</b></summary>
 
 ```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 460, "nodeSpacing": 45, "rankSpacing": 45}}}%%
 flowchart TD
-    subgraph CiliumEBPF ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cilium eBPF: In-Kernel DNS Interception & toFQDNs Security&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
-        PodCilium["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Workload Client Pod</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Calls: api.payments.internal.corp&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Standard UDP/TCP :53 query&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph CiliumEBPF ["Cilium eBPF: In-Kernel DNS Interception & toFQDNs Security"]
+        PodCilium["<b>Workload Client Pod</b><br/><br/>• Calls: <b>api.payments.internal.corp</b><br/>• Standard UDP/TCP :53 query from pod<br/>• Zero client or proxy sidecar overhead"]
         
-        KernelHook["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Linux Kernel Socket Layer</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• cgroup2 BPF_PROG_TYPE_SOCK_OPS&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Intercepts socket syscall&nbsp;&nbsp;&nbsp;&nbsp;"]
+        KernelHook["<b>Linux Kernel Socket Layer</b><br/><br/>• Attached to cgroup2 BPF_PROG_TYPE_SOCK_OPS<br/>• Intercepts connect/sendto socket syscalls<br/>• Zero userspace context switch"]
         
-        CiliumDNSProxy["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Cilium In-Kernel DNS Proxy</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Evaluates toFQDNs policy&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Pattern: payments.internal.corp&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Forwards to upstream resolver&nbsp;&nbsp;&nbsp;&nbsp;"]
+        CiliumDNSProxy["<b>Cilium In-Kernel DNS Proxy</b><br/><br/>• Evaluates toFQDNs egress network policy<br/>• Pattern match: <b>payments.internal.corp</b><br/>• Forwards query to upstream cluster DNS"]
         
-        EBPF_IPMap["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>In-Kernel eBPF Dynamic Cache</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Extracts IPs from DNS answer&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Updates eBPF cilium_ipcache&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Grants socket egress :443/:8080&nbsp;&nbsp;&nbsp;&nbsp;"]
+        EBPF_IPMap["<b>In-Kernel eBPF Dynamic Cache</b><br/><br/>• Extracts IPs from DNS answer dynamically<br/>• Updates kernel map: <b>cilium_ipcache</b><br/>• Automatically grants egress for ports :443/:8080"]
         
-        EgressTarget["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Target Service Destination</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Wire-speed direct socket delivery&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Sub-millisecond latency (<0.15ms)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        EgressTarget["<b>Target Service Destination</b><br/><br/>• Wire-speed direct socket delivery<br/>• Sub-millisecond latency (&lt;0.15ms)<br/>• Enforces cryptographically verified egress"]
 
-        PodCilium -->|"1. DNS Request"| KernelHook
+        PodCilium -->|"1. DNS Request :53"| KernelHook
         KernelHook -->|"2. Kernel eBPF redirect"| CiliumDNSProxy
         CiliumDNSProxy -->|"3. Policy verified & IPs cached"| EBPF_IPMap
-        EBPF_IPMap -->|"4. Returns IP to Pod"| PodCilium
+        EBPF_IPMap -->|"4. Returns IP answer to Pod"| PodCilium
         PodCilium -->|"5. Line-rate TCP Connection"| EgressTarget
     end
 
-    classDef client fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
-    classDef hook fill:#0c8599,stroke:#085461,stroke-width:2px,color:#fff;
-    classDef agent fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff;
-    classDef map fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff;
-    classDef target fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
+    classDef client fill:#343a40,stroke:#212529,stroke-width:2px,color:#fff,min-width:380px;
+    classDef hook fill:#0c8599,stroke:#085461,stroke-width:2px,color:#fff,min-width:380px;
+    classDef agent fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff,min-width:380px;
+    classDef map fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff,min-width:380px;
+    classDef target fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff,min-width:380px;
 
     class PodCilium client;
     class KernelHook hook;
@@ -1081,30 +1087,31 @@ In Istio Ambient, DNS proxying is built into the node-level **`ztunnel`** (`ISTI
 <summary><b>Diagram 4.2: Istio Ambient Node ztunnel DNS Capture & ServiceEntry VIP Synthesis (Click to Expand / Collapse)</b></summary>
 
 ```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 460, "nodeSpacing": 45, "rankSpacing": 45}}}%%
 flowchart TD
-    subgraph IstioAmbientDNS ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Istio Ambient: Node ztunnel DNS Capture & ServiceEntry VIP Synthesis&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
-        PodAmbient["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Workload Pod in Ambient Mesh</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Calls: http://backend.internal.corp&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Standard UDP:53 DNS query&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph IstioAmbientDNS ["Istio Ambient: Node ztunnel DNS Capture & ServiceEntry VIP Synthesis"]
+        PodAmbient["<b>Workload Pod in Ambient Mesh</b><br/><br/>• Calls: <b>http://backend.internal.corp</b><br/>• Standard UDP:53 in-pod DNS query<br/>• Zero sidecar proxy in workload pod"]
         
-        ZtunnelDNS["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Node ztunnel (DNS Capture)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Intercepts DNS on worker node&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Matches ServiceEntry Host&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Synthesizes VIP: 240.240.0.100&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;🎯 OpenShift CoreDNS BYPASSED!&nbsp;&nbsp;&nbsp;&nbsp;"]
+        ZtunnelDNS["<b>Node ztunnel (DNS Capture Engine)</b><br/><br/>• Intercepts node port 53 via eBPF/iptables<br/>• Matches ServiceEntry Host definition<br/>• Synthesizes VIP: <b>240.240.0.100</b><br/>🎯 <b>Cluster CoreDNS 100% BYPASSED!</b>"]
         
-        HBONETunnel["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>ztunnel HBONE Encapsulation</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Pod opens TCP: 240.240.0.100:8080&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Wraps in HBONE (Port :15008)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Enforces SPIFFE mTLS identity&nbsp;&nbsp;&nbsp;&nbsp;"]
+        HBONETunnel["<b>ztunnel HBONE Encapsulation</b><br/><br/>• Pod opens TCP: 240.240.0.100:8080<br/>• Wraps stream in HBONE tunnel (Port :15008)<br/>• Enforces SPIFFE cryptographic mTLS identity"]
         
-        WaypointProxy["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Namespace Waypoint Envoy Proxy</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Terminates HBONE mTLS tunnel&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Evaluates Gateway API HTTPRoute&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Splits: 90% v1 / 10% v2 canary&nbsp;&nbsp;&nbsp;&nbsp;"]
+        WaypointProxy["<b>Namespace Waypoint Envoy Proxy</b><br/><br/>• Terminates HBONE mTLS tunnel connection<br/>• Evaluates Gateway API HTTPRoute rules<br/>• Splits: 90% v1 / 10% v2 canary traffic"]
         
-        TargetAmbient["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Target Service Endpoints</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Receives Layer 7 HTTP Traffic&nbsp;&nbsp;&nbsp;&nbsp;"]
+        TargetAmbient["<b>Target Service Endpoints</b><br/><br/>• Upstream workloads (v1 / v2 Canary)<br/>• Receives authenticated Layer 7 HTTP traffic"]
 
-        PodAmbient -->|"1. DNS Query"| ZtunnelDNS
-        ZtunnelDNS -->|"2. Synthesized VIP: 240.240.0.100"| PodAmbient
+        PodAmbient -->|"1. DNS Query :53"| ZtunnelDNS
+        ZtunnelDNS -->|"2. Synthesizes VIP: 240.240.0.100"| PodAmbient
         PodAmbient -->|"3. TCP to 240.240.0.100:8080"| HBONETunnel
         HBONETunnel -->|"4. HBONE mTLS (Port 15008)"| WaypointProxy
         WaypointProxy -->|"5. Proxies L7 Traffic"| TargetAmbient
     end
 
-    classDef client fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
-    classDef ztunnel fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff;
-    classDef tunnel fill:#0c8599,stroke:#085461,stroke-width:2px,color:#fff;
-    classDef waypoint fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff;
-    classDef target fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
+    classDef client fill:#343a40,stroke:#212529,stroke-width:2px,color:#fff,min-width:380px;
+    classDef ztunnel fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff,min-width:380px;
+    classDef tunnel fill:#0c8599,stroke:#085461,stroke-width:2px,color:#fff,min-width:380px;
+    classDef waypoint fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff,min-width:380px;
+    classDef target fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff,min-width:380px;
 
     class PodAmbient client;
     class ZtunnelDNS ztunnel;
@@ -1206,26 +1213,27 @@ Choosing the correct FQDN interception and routing pattern depends fundamentally
 <summary><b>Diagram 6.1: Enterprise Master FQDN Routing Decision Flowchart (Click to Expand / Collapse)</b></summary>
 
 ```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 460, "nodeSpacing": 45, "rankSpacing": 45}}}%%
 flowchart TD
-    Start(["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Select Enterprise FQDN Routing Pattern</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]) --> DistroCheck{"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>What is your Kubernetes Distribution?</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"}
+    Start(["<b>Select Enterprise FQDN Routing Pattern</b>"]) --> DistroCheck{{"<b>What is your Kubernetes Distribution?</b>"}}
 
-    DistroCheck -->|"Red Hat OpenShift (4.14 - 4.20+)"| OCPCheck{"&nbsp;&nbsp;&nbsp;&nbsp;Cluster-Admin Rights & Scope?&nbsp;&nbsp;&nbsp;&nbsp;"}
-    DistroCheck -->|"Vanilla K8s / Kind / RKE2"| DecVanilla["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>CoreDNS rewrite Plugin</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• <b>Recommended & Simplest</b>&nbsp;&nbsp;<br/>&nbsp;&nbsp;• In-memory Corefile regex rewrite&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Zero secondary resolver pods&nbsp;&nbsp;"]
-    DistroCheck -->|"AWS EKS or Azure AKS"| DecEKSAKS["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>coredns-custom ConfigMap</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• <b>Recommended & Simplest</b>&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Survives managed add-on upgrades&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Native cloud provider extension&nbsp;&nbsp;"]
-    DistroCheck -->|"Google Cloud GKE"| DecGKE["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>GCP Cloud DNS Private Zone</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• <b>Recommended:</b> VPC Cloud DNS&nbsp;&nbsp;<br/>&nbsp;&nbsp;• <b>Simplest:</b> kube-dns stubDomains&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Offloads DNS to Cloud Anycast&nbsp;&nbsp;"]
-    DistroCheck -->|"Zero-Trust Mesh Active"| MeshCheck{"&nbsp;&nbsp;&nbsp;&nbsp;Mesh Data Plane Architecture?&nbsp;&nbsp;&nbsp;&nbsp;"}
+    DistroCheck -->|"Red Hat OpenShift (4.14 - 4.20+)"| OCPCheck{{"<b>Cluster-Admin Rights & Scope?</b>"}}
+    DistroCheck -->|"Vanilla K8s / Kind / RKE2"| DecVanilla["<b>CoreDNS rewrite Plugin</b><br/><br/>• <b>Recommended & Simplest</b><br/>• In-memory Corefile regex rewrite<br/>• Zero secondary resolver pods"]
+    DistroCheck -->|"AWS EKS or Azure AKS"| DecEKSAKS["<b>coredns-custom ConfigMap</b><br/><br/>• <b>Recommended & Simplest</b><br/>• Survives managed add-on upgrades<br/>• Native cloud provider extension"]
+    DistroCheck -->|"Google Cloud GKE"| DecGKE["<b>GCP Cloud DNS Private Zone</b><br/><br/>• <b>Recommended:</b> VPC Cloud DNS<br/>• <b>Simplest:</b> kube-dns stubDomains<br/>• Offloads DNS to Cloud Anycast"]
+    DistroCheck -->|"Zero-Trust Mesh Active"| MeshCheck{{"<b>Mesh Data Plane Architecture?</b>"}}
 
-    OCPCheck -->|"Admin + Transparent URLs"| DecPatternA["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>OpenShift Pattern A (Forwarder)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• <b>Recommended for On-Prem OCP</b>&nbsp;&nbsp;<br/>&nbsp;&nbsp;• DNS spec.servers -> infra-dns&nbsp;&nbsp;<br/>&nbsp;&nbsp;• 100% transparent client calling&nbsp;&nbsp;"]
-    OCPCheck -->|"No Admin or AWS ROSA Cluster"| DecApproachB["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Split-Horizon Ingress via Traefik</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• <b>Simplest for OCP & Rec for ROSA</b>&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Call traefik.svc + Host Header&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Zero forwarders or patches&nbsp;&nbsp;"]
-    OCPCheck -->|"Tenant Dev / Rapid Testing"| DecPatternB["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Pod-Level hostAliases</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• <b>Simplest for Ad-hoc Testing</b>&nbsp;&nbsp;<br/>&nbsp;&nbsp;• 0% Admin rights, 0% CoreDNS load&nbsp;&nbsp;<br/>&nbsp;&nbsp;• ⚠️ Anti-pattern for production&nbsp;&nbsp;"]
+    OCPCheck -->|"Admin + Transparent URLs"| DecPatternA["<b>OpenShift Pattern A (Forwarder)</b><br/><br/>• <b>Recommended for On-Premises OCP</b><br/>• DNS spec.servers -> infra-dns CoreDNS<br/>• 100% transparent client calling"]
+    OCPCheck -->|"No Admin or AWS ROSA Cluster"| DecApproachB["<b>Split-Horizon Ingress via Traefik</b><br/><br/>• <b>Simplest for OCP & Rec for ROSA</b><br/>• Call traefik.svc + HTTP Host Header<br/>• Zero forwarders or operator patches"]
+    OCPCheck -->|"Tenant Dev / Rapid Testing"| DecPatternB["<b>Pod-Level hostAliases</b><br/><br/>• <b>Simplest for Ad-hoc Testing</b><br/>• 0% Admin rights, 0% CoreDNS load<br/>• ⚠️ Anti-pattern for production"]
 
-    MeshCheck -->|"Cilium eBPF CNI"| DecCilium["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Cilium In-Kernel DNS Proxy (toFQDNs)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• <b>Recommended for Low-Latency</b>&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Intercepts cgroup socket (<0.15ms)&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Dynamic IP cache for SaaS egress&nbsp;&nbsp;"]
-    MeshCheck -->|"Istio Ambient Mode"| DecAmbient["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Istio Ambient ztunnel + ServiceEntry</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• <b>Recommended for OCP 4.20+ Mesh</b>&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Synthesized 240.240.0.0 VIP&nbsp;&nbsp;<br/>&nbsp;&nbsp;• HBONE mTLS tunnel to Waypoint Envoy&nbsp;&nbsp;"]
+    MeshCheck -->|"Cilium eBPF CNI"| DecCilium["<b>Cilium In-Kernel DNS Proxy (toFQDNs)</b><br/><br/>• <b>Recommended for Ultra-Low Latency</b><br/>• Intercepts cgroup socket (&lt;0.15ms)<br/>• Dynamic IP cache for SaaS egress"]
+    MeshCheck -->|"Istio Ambient Mode"| DecAmbient["<b>Istio Ambient ztunnel + ServiceEntry</b><br/><br/>• <b>Recommended for OCP 4.20+ Mesh</b><br/>• Synthesized 240.240.0.0/16 VIP<br/>• HBONE mTLS tunnel to Waypoint Envoy"]
 
-    classDef start fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff;
-    classDef check fill:#e67700,stroke:#b05b00,stroke-width:2px,color:#fff;
-    classDef rec fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
-    classDef warn fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff;
+    classDef start fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff,min-width:340px;
+    classDef check fill:#e67700,stroke:#b05b00,stroke-width:2px,color:#fff,min-width:340px;
+    classDef rec fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff,min-width:340px;
+    classDef warn fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff,min-width:340px;
 
     class Start start;
     class DistroCheck,OCPCheck,MeshCheck check;
