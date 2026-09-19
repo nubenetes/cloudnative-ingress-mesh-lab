@@ -24,23 +24,29 @@
 
 ## Table of Contents
 - [1. Executive Summary & 2026 Landscape Shifts](#1-executive-summary--2026-landscape-shifts)
-- [2. Comprehensive Evaluation Matrix](#2-comprehensive-evaluation-matrix)
-- [3. Platform Decision Matrix & Ranked Recommendations](#3-platform-decision-matrix--ranked-recommendations)
+- [2. Hands-on PoC Evaluation Matrix (Cilium vs. Istio Ambient vs. Traefik v3)](#2-hands-on-poc-evaluation-matrix-cilium-vs-istio-ambient-vs-traefik-v3)
+- [3. Extended Ecosystem Alternatives & Competitive Landscape](#3-extended-ecosystem-alternatives--competitive-landscape)
+  - [3.1 Linkerd: The Micro-Proxy (Rust) Sidecar Defense & Commercial Pivot](#31-linkerd-the-micro-proxy-rust-sidecar-defense--commercial-pivot)
+  - [3.2 Envoy Gateway: The CNCF Gateway API Reference Controller](#32-envoy-gateway-the-cncf-gateway-api-reference-controller)
+  - [3.3 Kong Gateway & Kuma: Enterprise API Management vs. Hybrid Mesh](#33-kong-gateway--kuma-enterprise-api-management-vs-hybrid-mesh)
+  - [3.4 Comprehensive 6-Way Comparative Evaluation Matrix](#34-comprehensive-6-way-comparative-evaluation-matrix)
+- [4. Platform Decision Matrix & Ranked Recommendations](#4-platform-decision-matrix--ranked-recommendations)
   - [Archetype 1: Ultra-Low Latency & Telco/Fintech](#archetype-1-high-performance-ultra-low-latency--telcofintech-workloads)
   - [Archetype 2: Enterprise Multi-Tenant Zero-Trust](#archetype-2-enterprise-multi-tenant-zero-trust-cloud-platform-eg-openshift-on-awsbare-metal)
   - [Archetype 3: High-Velocity API Edge Platform](#archetype-3-high-velocity-api-edge--developer-platform-north-south-ingress-focus)
-- [4. Architecture Diagrams](#4-architecture-diagrams)
+- [5. Architecture Diagrams](#5-architecture-diagrams)
   - [Diagram 1: North-South into East-West Zero-Trust Fabric](#diagram-1-north-south-ingress-flow-into-east-west-zero-trust-mesh-fabric)
   - [Diagram 2: Data Plane Structural Comparison](#diagram-2-structural-data-plane-comparison-sidecar-vs-ebpf-bypass-vs-istio-ambient)
-- [5. Repository Structure](#5-repository-structure)
-- [6. Quick Start & Global Automation](#6-quick-start--global-automation)
-- [7. Authoritative References & Sources of Truth](#7-authoritative-references--sources-of-truth)
-  - [7.1 Kubernetes Gateway API & Networking Standards](#71-kubernetes-gateway-api--networking-standards)
-  - [7.2 Linux Kernel eBPF & Socket-Layer Acceleration (`sockops`)](#72-linux-kernel-ebpf--socket-layer-acceleration-sockops)
-  - [7.3 Istio Ambient Mode & HBONE Architecture](#73-istio-ambient-mode--hbone-architecture)
-  - [7.4 Traefik Proxy v3 (Edge Gateway & Ingress)](#74-traefik-proxy-v3-edge-gateway--ingress)
-  - [7.5 Red Hat OpenShift Compliance & Platform Hardening](#75-red-hat-openshift-compliance--platform-hardening)
-  - [7.6 Industry Standards for Zero-Trust & Identity](#76-industry-standards-for-zero-trust--identity)
+- [6. Repository Structure](#6-repository-structure)
+- [7. Quick Start & Global Automation](#7-quick-start--global-automation)
+- [8. Authoritative References & Sources of Truth](#8-authoritative-references--sources-of-truth)
+  - [8.1 Kubernetes Gateway API & Networking Standards](#81-kubernetes-gateway-api--networking-standards)
+  - [8.2 Linux Kernel eBPF & Socket-Layer Acceleration (`sockops`)](#82-linux-kernel-ebpf--socket-layer-acceleration-sockops)
+  - [8.3 Istio Ambient Mode & HBONE Architecture](#83-istio-ambient-mode--hbone-architecture)
+  - [8.4 Traefik Proxy v3 (Edge Gateway & Ingress)](#84-traefik-proxy-v3-edge-gateway--ingress)
+  - [8.5 Extended Alternatives: Linkerd, Envoy Gateway, Kong & Kuma](#85-extended-alternatives-linkerd-envoy-gateway-kong--kuma)
+  - [8.6 Red Hat OpenShift Compliance & Platform Hardening](#86-red-hat-openshift-compliance--platform-hardening)
+  - [8.7 Industry Standards for Zero-Trust & Identity](#87-industry-standards-for-zero-trust--identity)
 
 ---
 
@@ -69,7 +75,7 @@ This laboratory repository provides production-grade reference implementations, 
 
 ---
 
-## 2. Comprehensive Evaluation Matrix
+## 2. Hands-on PoC Evaluation Matrix (Cilium vs. Istio Ambient vs. Traefik v3)
 
 | Evaluation Dimension | Cilium Service Mesh (v1.16+) | Istio Ambient Mesh (v1.23+) | Traefik v3 (Edge Gateway) |
 | :--- | :--- | :--- | :--- |
@@ -87,29 +93,74 @@ This laboratory repository provides production-grade reference implementations, 
 
 ---
 
-## 3. Platform Decision Matrix & Ranked Recommendations
+## 3. Extended Ecosystem Alternatives & Competitive Landscape
+
+While the three hands-on laboratories in this repository evaluate the leading data plane archetypes (In-Kernel eBPF, Sidecarless Ambient, and Go-native Edge Ingress), enterprise architecture reviews require comparing other major cloud-native networking solutions: **Linkerd**, **Envoy Gateway**, **Kong Gateway**, and **Kuma**.
+
+### 3.1 Linkerd: The Micro-Proxy (Rust) Sidecar Defense & Commercial Pivot
+- **Architectural Defense of the Sidecar**: Linkerd (Buoyant) firmly defends the sidecar model against node-shared proxies. Their position is that running multi-tenant proxies in the host network namespace (like `ztunnel` or node-level Envoy) breaches POSIX container isolation boundaries and enlarges the CVE blast radius—where a single proxy parser exploit can expose traffic across all pods on a node.
+- **The `linkerd2-proxy` Micro-Proxy**: Written strictly in **Rust**, Linkerd's proxy is memory-safe by design, consuming merely **~15MB–30MB RSS per pod** (roughly 1/4th the memory of an Envoy sidecar) with ultra-low latency and zero C/C++ memory corruption vulnerabilities.
+- **Gateway API Support**: Implements `HTTPRoute` directly attached to Kubernetes `Service` objects for East-West traffic. For North-South ingress, Linkerd deliberately omits a bundled edge proxy, requiring integration with external controllers (e.g., Envoy Gateway or Traefik).
+- **The 2024–2026 Commercial Licensing Shift**: In February 2024, Buoyant changed Linkerd's distribution model. While weekly "edge" releases remain open-source, official stable release binaries (`stable-2.14+`, `stable-2.15+`) require a paid commercial agreement for organizations with over 50 pods in production. This shift led many enterprises with pure open-source mandates to prioritize Apache 2.0 projects (**Istio Ambient** and **Cilium**).
+- **OpenShift Fit**: Requires `linkerd-cni` and custom SCCs; lacks first-party Red Hat support (Red Hat standardizes on OSSM 3 / Istio Ambient).
+
+### 3.2 Envoy Gateway: The CNCF Gateway API Reference Controller
+- **The Official Reference Standard**: Created jointly by the Envoy Project steering committee and Kubernetes SIG-Network, Envoy Gateway is the canonical open-source translation layer from Kubernetes Gateway API directly to dynamic **Envoy v3 xDS**.
+- **Envoy Without the Mesh**: Enables platform teams to deploy and manage upstream Envoy proxies using 100% vendor-neutral Gateway API resources, extended via native policies (`ClientTrafficPolicy`, `BackendTrafficPolicy`, `SecurityPolicy` for OIDC/JWT, and `EnvoyExtensionPolicy` for Wasm).
+- **Comparison to Traefik v3**: While Traefik offers superior developer ergonomics and Go-native custom CRD middlewares, Envoy Gateway provides native Envoy filter parity and standardized xDS hooks for organizations already committed to the Envoy ecosystem.
+
+### 3.3 Kong Gateway & Kuma: Enterprise API Management vs. Hybrid Mesh
+- **Kong Gateway (KIC)**: Based on OpenResty (Nginx + LuaJIT) and modern C/Go cores. Excels at full-lifecycle API Management (developer portals, API monetization, OAuth2/OIDC token minting, fine-grained plugin catalog), but carries a heavier memory footprint (~150MB–300MB+ per instance) and operational complexity (PostgreSQL or decK GitOps tooling).
+- **Kuma / Kong Mesh**: Envoy-based service mesh designed for multi-zone, hybrid cloud, and bare-metal VM environments. While mature for VM-to-K8s cross-cluster topologies, it has seen slower adoption in pure OpenShift/Kubernetes environments compared to Istio Ambient.
+
+### 3.4 Comprehensive 6-Way Comparative Evaluation Matrix
+
+| Evaluation Dimension | Cilium Service Mesh | Istio Ambient Mesh | Traefik Proxy v3 | Linkerd (2.16+) | Envoy Gateway | Kong Gateway (KIC) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Primary Architectural Role** | In-kernel eBPF Mesh & Ingress | Split-Plane Sidecarless Mesh | Edge Ingress & API Router | Micro-Proxy Sidecar Mesh | Pure Gateway API Ingress | Full Lifecycle API Gateway |
+| **Data Plane Engine** | eBPF bytecode + Node Envoy | Rust `ztunnel` + Envoy Waypoint | Go Core multiplexer | Rust `linkerd2-proxy` | Envoy Proxy (C++) | OpenResty (Nginx/Lua) + Go |
+| **Mesh Topology** | Host/Node-level (Sidecarless) | Node L4 + Namespace L7 | None (North-South Edge) | Pod-scoped (Sidecar) | None (North-South Edge) | Optional Kuma sidecars |
+| **Gateway API Conformance** | v1 GA Native | v1 GA Native (Waypoint binding) | v1 GA Native | v1 GA (East-West routing) | Official Reference Standard | v1 Partial / CRD-heavy |
+| **Pod Workload Overhead** | **0 MB** (Zero sidecar) | **0 MB** (Zero sidecar) | 0 MB (Edge Proxy) | **~15–30 MB** (Rust proxy) | 0 MB (Edge Proxy) | ~150–300 MB per replica |
+| **CVE Blast Radius Containment** | Shared Node Envoy | Split: Node L4 / Namespace L7 | Edge Perimeter | **Strict Pod Isolation** | Edge Perimeter | Edge Perimeter |
+| **mTLS & Identity Backbone** | SPIRE / Node WireGuard | **HBONE / SPIFFE X.509** | Edge TLS Termination | Pod-to-Pod mTLS (SPIFFE) | Edge TLS / Backend mTLS | Edge TLS / Upstream mTLS |
+| **Red Hat OpenShift Fit** | Requires CNI/SELinux bypass | **First-Class (OSSM 3.x Native)** | High (`restricted-v2` SCC) | Requires custom SCC & CNI | High (`anyuid` SCC) | Certified Operator Catalog |
+| **Licensing Governance** | Apache 2.0 (CNCF Graduated) | Apache 2.0 (CNCF Graduated) | Apache 2.0 / Enterprise | Edge: Apache 2.0 / Stable: Paid | Apache 2.0 (CNCF) | Apache 2.0 / Kong Enterprise |
+
+---
+
+## 4. Platform Decision Matrix & Ranked Recommendations
 
 ### Archetype 1: High-Performance, Ultra-Low Latency & Telco/Fintech Workloads
 - **Rank 1: Cilium eBPF Service Mesh**
   - *Why*: Eliminates user-space/kernel-space context switching for internal pod-to-pod traffic. Using Linux `sockops` eBPF programs, Cilium connects client and server sockets directly at the kernel layer, bypassing the entire TCP/IP network stack (iptables, routing tables, and veth pairs). WireGuard kernel-level encryption provides line-rate hardware-accelerated confidentiality with zero proxy overhead.
 - **Rank 2: Istio Ambient**
-- **Rank 3: Traefik v3** (Not applicable for East-West mesh)
+  - *Why*: Rust-based `ztunnel` provides high-throughput HBONE mutual TLS at Layer 4 with negligible overhead, routing through `waypoint` proxies only when L7 inspection is required.
+- **Rank 3: Linkerd**
+  - *Why*: Rust micro-proxy (`linkerd2-proxy`) delivers extremely fast forward proxying and minimal memory overhead (~15MB), though requests still traverse the pod loopback and veth stack twice.
+- **Rank 4: Traefik v3 / Envoy Gateway** (Dedicated Edge Gateways; not applicable for East-West mesh fabrics).
 
 ### Archetype 2: Enterprise Multi-Tenant Zero-Trust Cloud Platform (e.g., OpenShift on AWS/Bare-Metal)
 - **Rank 1: Istio Ambient (Red Hat OpenShift Service Mesh 3.x)**
   - *Why*: Operates seamlessly on top of Red Hat's default **OVN-Kubernetes** CNI without requiring kernel replacement. Enforces strict cryptographic zero-trust at Layer 4 across every pod through `ztunnel` without developer intervention. When Layer 7 traffic authorization, canary routing, or header manipulation is demanded, platform teams can selectively spin up a dedicated `waypoint` proxy for that specific namespace or service account, guaranteeing strong tenant isolation and blast-radius containment.
-- **Rank 2: Cilium eBPF** (Heavy SCC and SELinux modification requirements on RHCOS)
-- **Rank 3: Traefik v3**
+- **Rank 2: Linkerd**
+  - *Why*: Superior pod-level CVE isolation and memory safety via Rust. However, it requires custom SCCs and third-party CNI deployment on OpenShift, and commercial stable licensing introduces procurement friction.
+- **Rank 3: Cilium eBPF** (Heavy SCC and SELinux modification requirements on RHCOS; high friction for replacing default OVN-Kubernetes).
+- **Rank 4: Traefik v3** (Perimeter edge routing; pairs with Istio Ambient or Linkerd for internal mesh).
 
 ### Archetype 3: High-Velocity API Edge & Developer Platform (North-South Ingress Focus)
 - **Rank 1: Traefik v3 Gateway API**
   - *Why*: Unrivaled developer ergonomics, ultra-fast dynamic configuration updates without reloads, and rich native middlewares (token-bucket rate limiting, circuit breaking, distributed tracing). Native implementation of `gateway.networking.k8s.io/v1` combined with Traefik Middleware filters enables declarative, self-service edge routing without bloated custom controllers.
-- **Rank 2: Cilium Gateway API** (Excellent if Cilium is already the CNI)
-- **Rank 3: Istio Ingress Gateway**
+- **Rank 2: Envoy Gateway**
+  - *Why*: Official CNCF Gateway API reference controller. Provides direct translation to Envoy xDS v3 with standard policy attachments (`SecurityPolicy`, `ClientTrafficPolicy`, Wasm) without requiring an Istio control plane.
+- **Rank 3: Kong Gateway (KIC)**
+  - *Why*: Ideal if the platform mandates full-lifecycle API Management (developer portal, API key generation, consumer billing, Lua/Python plugins), though at higher memory and operational cost.
+- **Rank 4: Cilium Gateway API** (Excellent if Cilium is already deployed as the primary CNI).
+- **Rank 5: Istio Ingress Gateway** (Heavyweight if deployed purely for edge ingress without an underlying mesh).
 
 ---
 
-## 4. Architecture Diagrams
+## 5. Architecture Diagrams
 
 ### Diagram 1: North-South Ingress Flow into East-West Zero-Trust Mesh Fabric
 
@@ -191,7 +242,7 @@ flowchart TB
 
 ---
 
-## 5. Repository Structure
+## 6. Repository Structure
 
 ```
 cloudnative-ingress-mesh-lab/
@@ -234,7 +285,7 @@ cloudnative-ingress-mesh-lab/
 
 ---
 
-## 6. Quick Start & Global Automation
+## 7. Quick Start & Global Automation
 
 To execute any automated lab, run the central `Makefile`:
 
@@ -267,11 +318,11 @@ For complete step-by-step deep-dives, proceed directly to the [Architecture Deep
 
 ---
 
-## 7. Authoritative References & Sources of Truth
+## 8. Authoritative References & Sources of Truth
 
 The architectural analyses, comparative metrics, kernel configurations, and YAML payloads across this repository are grounded in official upstream specifications, Linux kernel documentation, and vendor implementation standards:
 
-### 7.1 Kubernetes Gateway API & Networking Standards
+### 8.1 Kubernetes Gateway API & Networking Standards
 - **Kubernetes Gateway API v1.1+ Specification (GA)**: [https://gateway-api.sigs.k8s.io/](https://gateway-api.sigs.k8s.io/)  
   *Official SIG-Network specification defining the role-oriented resource model (`GatewayClass`, `Gateway`, `HTTPRoute`, `TLSRoute`, `GRPCRoute`).*
 - **GEP-709: Gateway API vs. Ingress Evolution Rationale**: [https://gateway-api.sigs.k8s.io/geps/gep-709/](https://gateway-api.sigs.k8s.io/geps/gep-709/)  
@@ -281,7 +332,7 @@ The architectural analyses, comparative metrics, kernel configurations, and YAML
 - **IETF RFC 9113: HTTP/2 Specification (CONNECT Tunneling)**: [https://datatracker.ietf.org/doc/html/rfc9113](https://datatracker.ietf.org/doc/html/rfc9113)  
   *The underlying IETF standard governing HTTP/2 stream multiplexing and the `CONNECT` method used by HBONE data planes.*
 
-### 7.2 Linux Kernel eBPF & Socket-Layer Acceleration (`sockops`)
+### 8.2 Linux Kernel eBPF & Socket-Layer Acceleration (`sockops`)
 - **Linux Kernel Documentation: BPF Program Types (`sock_ops` & `sk_msg`)**: [https://docs.kernel.org/bpf/](https://docs.kernel.org/bpf/)  
   *Primary kernel source of truth detailing socket map redirection via `bpf_msg_redirect_hash()` and `BPF_MAP_TYPE_SOCKHASH`.*
 - **Cilium eBPF Host-Routing & Socket-Level Acceleration Architecture**: [https://docs.cilium.io/en/stable/network/ebpf/](https://docs.cilium.io/en/stable/network/ebpf/)  
@@ -291,7 +342,7 @@ The architectural analyses, comparative metrics, kernel configurations, and YAML
 - **Isovalent Architecture Whitepaper: Eliminating the Sidecar Tax with eBPF**: [https://isovalent.com/blog/post/2021-12-08-ebpf-servicemesh/](https://isovalent.com/blog/post/2021-12-08-ebpf-servicemesh/)  
   *Empirical performance benchmarks documenting context-switch reductions, memory overhead, and P99 latency savings.*
 
-### 7.3 Istio Ambient Mode & HBONE Architecture
+### 8.3 Istio Ambient Mode & HBONE Architecture
 - **Istio Ambient Mode Architectural Specification**: [https://istio.io/latest/docs/ambient/overview/](https://istio.io/latest/docs/ambient/overview/)  
   *Official Istio documentation covering the architectural decoupling of Layer 4 transport security from Layer 7 application policies.*
 - **Istio ztunnel (Zero-Trust Tunnel) Technical Reference**: [https://istio.io/latest/docs/ambient/architecture/ztunnel/](https://istio.io/latest/docs/ambient/architecture/ztunnel/)  
@@ -301,7 +352,7 @@ The architectural analyses, comparative metrics, kernel configurations, and YAML
 - **Istio Ambient Security Assessment & Threat Modeling**: [https://istio.io/latest/docs/ambient/architecture/security/](https://istio.io/latest/docs/ambient/architecture/security/)  
   *Cryptographic identity guarantees, SPIFFE X.509 certificate exchange, and workload isolation verifications.*
 
-### 7.4 Traefik Proxy v3 (Edge Gateway & Ingress)
+### 8.4 Traefik Proxy v3 (Edge Gateway & Ingress)
 - **Traefik v3 Kubernetes Gateway API Provider Documentation**: [https://doc.traefik.io/traefik/providers/kubernetes-gateway/](https://doc.traefik.io/traefik/providers/kubernetes-gateway/)  
   *Official provider reference for Traefik v3 GatewayClass controllers, HTTPRoute resolution, and extension filters.*
 - **Traefik Middleware Engine Specification**: [https://doc.traefik.io/traefik/middlewares/overview/](https://doc.traefik.io/traefik/middlewares/overview/)  
@@ -309,7 +360,19 @@ The architectural analyses, comparative metrics, kernel configurations, and YAML
 - **Traefik Observability: Prometheus Metrics & OpenTelemetry**: [https://doc.traefik.io/traefik/observability/metrics/prometheus/](https://doc.traefik.io/traefik/observability/metrics/prometheus/)  
   *Metrics exposition schemas for ingress request duration quantiles, retry rates, and active backend connections.*
 
-### 7.5 Red Hat OpenShift Enterprise Compliance & Platform Hardening
+### 8.5 Extended Alternatives: Linkerd, Envoy Gateway, Kong & Kuma
+- **Linkerd Architecture & The Case for Sidecars**: [https://linkerd.io/2/reference/architecture/](https://linkerd.io/2/reference/architecture/)  
+  *Upstream architectural defense of pod-level Rust micro-proxies, POSIX namespace isolation, and memory-safety guarantees.*
+- **Buoyant Linkerd Stable Release Distribution Announcement**: [https://buoyant.io/blog/announcing-linkerd-2-15](https://buoyant.io/blog/announcing-linkerd-2-15)  
+  *Official statement detailing the dual-tier distribution model and commercial license requirement for stable artifacts.*
+- **Envoy Gateway Official Documentation & Architecture**: [https://gateway.envoyproxy.io/](https://gateway.envoyproxy.io/)  
+  *CNCF Gateway API reference implementation translating Kubernetes Gateway API specs into dynamic Envoy xDS v3 configurations.*
+- **Kong Gateway & Kong Ingress Controller Documentation**: [https://docs.konghq.com/kubernetes-ingress-controller/latest/](https://docs.konghq.com/kubernetes-ingress-controller/latest/)  
+  *Upstream technical reference for API productization, Gateway API integration, and plugin ecosystems.*
+- **CNCF Kuma Service Mesh Architecture**: [https://kuma.io/docs/latest/](https://kuma.io/docs/latest/)  
+  *Documentation on multi-zone, multi-cluster, and hybrid VM/Kubernetes service mesh topologies.*
+
+### 8.6 Red Hat OpenShift Enterprise Compliance & Platform Hardening
 - **OpenShift Container Platform: Security Context Constraints (SCCs)**: [https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html](https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html)  
   *Enterprise security authorization reference defining RBAC boundaries for `restricted-v2`, `anyuid`, and `privileged` workloads.*
 - **Red Hat OpenShift Service Mesh 3.x (OSSM 3 / Ambient Architecture)**: [https://docs.openshift.com/container-platform/latest/service_mesh/](https://docs.openshift.com/container-platform/latest/service_mesh/)  
@@ -319,7 +382,7 @@ The architectural analyses, comparative metrics, kernel configurations, and YAML
 - **OVN-Kubernetes Architecture & Multus CNI Secondary Networks**: [https://docs.openshift.com/container-platform/latest/networking/ovn_kubernetes_network_provider/about-ovn-kubernetes.html](https://docs.openshift.com/container-platform/latest/networking/ovn_kubernetes_network_provider/about-ovn-kubernetes.html)  
   *Architecture guide for OpenShift's default Geneve overlay CNI and secondary network interface attachment definitions.*
 
-### 7.6 Industry Standards for Zero-Trust & Identity
+### 8.7 Industry Standards for Zero-Trust & Identity
 - **NIST Special Publication 800-207: Zero Trust Architecture**: [https://csrc.nist.gov/publications/detail/sp/800-207/final](https://csrc.nist.gov/publications/detail/sp/800-207/final)  
   *Authoritative federal guidelines for continuous cryptographic identity verification, micro-segmentation, and policy enforcement points.*
 - **SPIFFE / SPIRE Workload Identity Specification**: [https://spiffe.io/](https://spiffe.io/)  
