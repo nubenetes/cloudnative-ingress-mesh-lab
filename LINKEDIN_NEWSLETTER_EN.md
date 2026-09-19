@@ -319,6 +319,15 @@ For platform engineers who prefer deep-dive video walkthroughs, the architectura
 4. 🚀 [**OpenShift con FQDN en north-south y east-west: Traefik vs Gateway API**](https://www.youtube.com/watch?v=kIEqhHRf-Ks) *(9m 06s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
    *Core Topic:* Complete architectural walkthrough on Red Hat OpenShift on AWS (ROSA): Traefik CRDs (`IngressRoute`) vs. Gateway API (`HTTPRoute`), AWS NLB integration with PROXY Protocol v2, strict mTLS (TLS 1.3), and `restricted-v2` SCC compliance.
 
+### ⚡ Related YouTube Shorts (Quick 60–90 Second Deep Dives)
+
+- ⚡ [**How to Route East West unified FQDNs on OpenShift with Traefik or Gateway API**](https://www.youtube.com/shorts/_YufQ7kv2xM) *(1m 23s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*: Layer 7 split-horizon routing on OpenShift 4.x avoiding public NLB hairpinning.
+- ⚡ [**Cómo Enrutar Dominios Internos con Traefik con FQDN unificado**](https://www.youtube.com/shorts/ZNo0BCIXlbA) *(1m 34s • Audio Original: Español 🇪🇸 • Pistas Multilingües ⚙️)*: Microservice domain resolution without sidecars or CoreDNS modifications.
+- ⚡ [**The Ghost in the Server: East-West & Split-Brain DNS on Red Hat OpenShift 4.x**](https://www.youtube.com/shorts/LX_SLw5ovVo) *(0m 58s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*: Why internal calls traverse external NLBs and how L7 split-horizon ingress fixes it.
+- ⚡ [**How Split Brain DNS Keeps Traffic Hidden**](https://www.youtube.com/shorts/moT_HjQsuF4) *(1m 09s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*: Public WAF/NLB inspection vs. private ClusterIP direct resolution.
+- ⚡ [**Routing Internal URLs With Service Mesh**](https://www.youtube.com/shorts/go_sCgyASe4) *(1m 17s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*: Envoy/Cilium Layer 7 transparent interception and dynamic URL rewriting.
+- ⚡ [**Traefik CRDs vs Gateway API on OpenShift**](https://www.youtube.com/shorts/ZykBWmE9Gd8) *(1m 16s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*: Traefik IngressRoute vs. Kubernetes Gateway API HTTPRoute on OpenShift ROSA.
+
 ---
 
 ## 📚 Authoritative References & Further Reading

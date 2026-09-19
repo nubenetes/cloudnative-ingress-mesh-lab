@@ -111,6 +111,8 @@
   - [8.7 Industry Standards for Zero-Trust & Identity](#87-industry-standards-for-zero-trust--identity)
 - [9. Companion Projects & Ecosystem Cross-References](#9-companion-projects--ecosystem-cross-references)
 - [10. 🎬 YouTube Video Masterclasses & Architectural Walkthroughs](#10--youtube-video-masterclasses--architectural-walkthroughs)
+  - [10.1 Detailed Video Reference Breakdown](#detailed-video-reference-breakdown)
+  - [10.2 ⚡ YouTube Video Shorts (Quick Architectural Concepts)](#102--youtube-video-shorts-quick-architectural-concepts--60-second-deep-dives)
 
 ---
 
@@ -914,7 +916,7 @@ The technical concepts, multi-engine comparisons, and FQDN patterns explored acr
 | **FQDN unificado en OpenShift para north-south y east-west con Traefik y Gateway API** | Spanish 🇪🇸 *(Multilingual ⚙️)* | Solving the OpenShift CoreDNS immutability barrier with Traefik Proxy v3 and Kubernetes Gateway API without paying the sidecar memory tax. Contrasts Pattern A (DNS Operator Zone Forwarding) vs. Pattern B (Split-Horizon Route 53). | [▶️ Ver Vídeo (9:25)](https://www.youtube.com/watch?v=zUq_CYC7vM8) |
 | **OpenShift con FQDN en north-south y east-west: Traefik vs Gateway API** | Spanish 🇪🇸 *(Multilingual ⚙️)* | End-to-end architectural walkthrough on Red Hat OpenShift on AWS (ROSA): Traefik CRDs (`IngressRoute`) vs. standard Gateway API (`HTTPRoute`), AWS NLB PROXY Protocol v2, strict mTLS (TLS 1.3), and `restricted-v2` SCC compliance. | [▶️ Ver Vídeo (9:06)](https://www.youtube.com/watch?v=kIEqhHRf-Ks) |
 
-### Detailed Video Reference Breakdown
+### 10.1 Detailed Video Reference Breakdown
 
 #### 1. [Unified FQDN Routing with Traefik alternatives](https://www.youtube.com/watch?v=xuDtcUZYeHU)
 * **URL:** [https://www.youtube.com/watch?v=xuDtcUZYeHU](https://www.youtube.com/watch?v=xuDtcUZYeHU)
@@ -955,4 +957,38 @@ The technical concepts, multi-engine comparisons, and FQDN patterns explored acr
   - Mitigating public hairpinning by routing internal East-West traffic directly through the ingress controller.
   - Enforcing strict mutual TLS (mTLS) with TLS 1.3 modern ciphers and SAN verification.
   - Hardening for OpenShift Security Context Constraints (`restricted-v2` SCC) and integrating AWS Network Load Balancer (NLB) with PROXY Protocol v2 to preserve true client source IPs.
+
+---
+
+### 10.2 ⚡ YouTube Video Shorts (Quick Architectural Concepts & 60-Second Deep Dives)
+
+In addition to the extended masterclasses, the following fast-paced video shorts provide visual and conceptual summaries of ingress mechanics, split-brain DNS, service mesh Layer 7 proxying, and Gateway API architectures:
+
+> [!NOTE]
+> **Multilingual Audio Settings:** All shorts feature **original audio in Spanish (Español 🇪🇸)** with **YouTube Multilingual Audio Tracks** enabled (21+ audio languages available via player **Settings (⚙️) ➔ Audio track**).
+
+| YouTube Short | Duration | Original Audio | Key Architectural Concept | Watch on YouTube |
+| :--- | :---: | :---: | :--- | :---: |
+| **How to Route East West unified FQDNs on OpenShift with Traefik or Gateway API** | 1m 23s | Spanish 🇪🇸 *(Multilingual ⚙️)* | Layer 7 split-horizon routing on OpenShift 4.x, avoiding hairpinning out to public AWS NLB, and overcoming CoreDNS immutability. | [⚡ Ver Short](https://www.youtube.com/shorts/_YufQ7kv2xM) |
+| **Cómo Enrutar Dominios Internos con Traefik con FQDN unificado** | 1m 34s | Spanish 🇪🇸 *(Multilingual ⚙️)* | Enrutamiento de microservicios internos con dominio canónico idéntico al externo usando Traefik y Gateway API sin peaje de sidecars. | [⚡ Ver Short](https://www.youtube.com/shorts/ZNo0BCIXlbA) |
+| **The Ghost in the Server: East-West & Split-Brain DNS on Red Hat OpenShift 4.x** | 0m 58s | Spanish 🇪🇸 *(Multilingual ⚙️)* | Unveils the hidden hairpinning problem when internal pods query canonical domains, adding 15–40ms latency and AWS egress bills. | [⚡ Ver Short](https://www.youtube.com/shorts/LX_SLw5ovVo) |
+| **How Split Brain DNS Keeps Traffic Hidden** | 1m 09s | Spanish 🇪🇸 *(Multilingual ⚙️)* | Explains split-horizon DNS: external callers traverse public WAF/NLB while internal cluster pods resolve directly to private ClusterIP. | [⚡ Ver Short](https://www.youtube.com/shorts/moT_HjQsuF4) |
+| **Routing Internal URLs With Service Mesh** | 1m 17s | Spanish 🇪🇸 *(Multilingual ⚙️)* | How Layer 7 transparent proxying intercepts `Host` headers and rewrites destinations to in-cluster services without DNS hacks. | [⚡ Ver Short](https://www.youtube.com/shorts/go_sCgyASe4) |
+| **Traefik CRDs vs Gateway API on OpenShift** | 1m 16s | Spanish 🇪🇸 *(Multilingual ⚙️)* | 60-second showdown between Traefik native CRDs (`IngressRoute`) and Kubernetes Gateway API (`HTTPRoute`) on OpenShift ROSA. | [⚡ Ver Short](https://www.youtube.com/shorts/ZykBWmE9Gd8) |
+
+#### Shorts Reference Breakdown:
+
+1. ⚡ [**How to Route East West unified FQDNs on OpenShift with Traefik or Gateway API** (1m 23s)](https://www.youtube.com/shorts/_YufQ7kv2xM) *(Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
+   *Scope:* Overcoming the OpenShift 4.14+ CoreDNS immutability lock by deploying Traefik v3 and Kubernetes Gateway API to achieve Layer 7 Split-Horizon routing. Eliminates inter-namespace AWS hairpinning and saves 50–100 GB RAM by dropping legacy Envoy sidecars.
+2. ⚡ [**Cómo Enrutar Dominios Internos con Traefik con FQDN unificado** (1m 34s)](https://www.youtube.com/shorts/ZNo0BCIXlbA) *(Audio Original: Español 🇪🇸 • Pistas Multilingües ⚙️)*  
+   *Scope:* Guía condensada sobre resolución de dominios idénticos (`api.empresa.com`) para llamadas internas y externas en Kubernetes y OpenShift. Demuestra cómo Traefik intercepta el tráfico sin modificar Corefiles globales.
+3. ⚡ [**The Ghost in the Server: East-West & Split-Brain DNS on Red Hat OpenShift 4.x** (0m 58s)](https://www.youtube.com/shorts/LX_SLw5ovVo) *(Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
+   *Scope:* Highlights the latency hazards of default cluster networking where internal calls traverse external AWS NLB routers. Explains why declaring custom DNS zones requires `cluster-admin` and how L7 split-horizon ingress solves the dilemma cleanly.
+4. ⚡ [**How Split Brain DNS Keeps Traffic Hidden** (1m 09s)](https://www.youtube.com/shorts/moT_HjQsuF4) *(Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
+   *Scope:* Architectural breakdown of Split-Brain / Split-Horizon DNS: outside requests flow through perimeter firewalls and WAF, while internal developers and microservices resolve the exact same URL to a private ClusterIP with zero internet egress costs.
+5. ⚡ [**Routing Internal URLs With Service Mesh** (1m 17s)](https://www.youtube.com/shorts/go_sCgyASe4) *(Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
+   *Scope:* Explains transparent Layer 7 interception with Envoy/Cilium: dynamically inspecting HTTP `Host` headers and rewriting routes to `svc.cluster.local` without maintaining fragile DNS records or spoofing CoreDNS.
+6. ⚡ [**Traefik CRDs vs Gateway API on OpenShift** (1m 16s)](https://www.youtube.com/shorts/ZykBWmE9Gd8) *(Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
+   *Scope:* Rapid architectural comparison on ROSA: Traefik CRDs (`IngressRoute`, zero 503 reload flaps) vs. CNCF Gateway API (`HTTPRoute`, zero vendor lock-in), direct OpenShift HAProxy router bypass, and strict non-root UID 65532 (`restricted-v2` SCC).
+
 
