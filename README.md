@@ -493,24 +493,30 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Consumer(["&nbsp;&nbsp;&nbsp;&nbsp;External API Consumer / Client&nbsp;&nbsp;&nbsp;&nbsp;"]) -->|"HTTPS :443"| KongGW["&nbsp;&nbsp;&nbsp;&nbsp;Kong Gateway Edge (OpenResty / NGINX)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(C-Core + Lua Radix Router + Gateway API)&nbsp;&nbsp;&nbsp;&nbsp;"]
-    
-    subgraph KongEdgePlane ["&nbsp;&nbsp;API Management & Productization Tier&nbsp;&nbsp;"]
-        KongGW --> PluginEngine["&nbsp;&nbsp;&nbsp;&nbsp;Kong Plugin Engine&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(KeyAuth -> RateLimiting -> Developer Portal)&nbsp;&nbsp;&nbsp;&nbsp;"]
-    end
-    
-    subgraph KumaMeshPlane ["&nbsp;&nbsp;Kuma Service Mesh Fabric (Envoy Data Plane)&nbsp;&nbsp;"]
-        KumaCP["&nbsp;&nbsp;&nbsp;&nbsp;Kuma Global / Zone Control Plane&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(mTLS CA & Dynamic Routing Policies)&nbsp;&nbsp;&nbsp;&nbsp;"]
-        PluginEngine --> KumaProxy1["&nbsp;&nbsp;&nbsp;&nbsp;Kuma Ingress Envoy Sidecar&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Embedded DNS on Port 15053)&nbsp;&nbsp;&nbsp;&nbsp;"]
-        KumaCP -.->|"xDS Policy Sync"| KumaProxy1
+    Consumer(["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>External API Consumer / Client</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;HTTPS Public Traffic on TCP :443&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]) -->|"TLS 1.3 / HTTPS"| KongGW
+
+    subgraph KongEdgePlane ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;API Management & Productization Tier (North-South)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        KongGW["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Kong Gateway Edge Router</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• OpenResty / NGINX C-Core Engine&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• High-Speed Lua Radix Router&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Native Kubernetes Gateway API v1&nbsp;&nbsp;&nbsp;&nbsp;"]
         
-        KumaProxy1 -->|"mTLS + TrafficRoute"| KumaProxy2["&nbsp;&nbsp;&nbsp;&nbsp;Target Kuma Envoy Sidecar&nbsp;&nbsp;&nbsp;&nbsp;"]
-        KumaCP -.->|"xDS Policy Sync"| KumaProxy2
+        KongGW --> PluginEngine["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Kong Enterprise Plugin Pipeline</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• KeyAuth & OAuth2 / OIDC Security&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Token-Bucket Rate Limiting&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Developer Portal Governance&nbsp;&nbsp;&nbsp;&nbsp;"]
     end
     
-    subgraph HybridBackends ["&nbsp;&nbsp;Hybrid Multi-Zone Workloads&nbsp;&nbsp;"]
-        KumaProxy2 --> PodBackend["&nbsp;&nbsp;&nbsp;&nbsp;Kubernetes Microservice Pod&nbsp;&nbsp;&nbsp;&nbsp;"]
-        KumaProxy1 -.->|"Cross-Zone / Bare Metal"| VMBackend["&nbsp;&nbsp;&nbsp;&nbsp;External Virtual Machine (Bare-Metal)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph KumaMeshPlane ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kuma Service Mesh Fabric (Envoy Data Plane / East-West)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        KumaCP["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Kuma Global / Zone Control Plane</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Built-in mTLS CA Provider&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Dynamic xDS v3 Policy Distribution&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Multi-Zone Mesh Coordination&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        PluginEngine -->|"Enters Mesh Fabric"| KumaProxy1["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Kuma Ingress Envoy Sidecar</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Embedded DNS on Port :15053&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Transparent *.mesh Resolver&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Initiates Intra-Cluster mTLS&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        KumaCP -.->|"xDS Policy Stream"| KumaProxy1
+        
+        KumaProxy1 -->|"mTLS Tunnel + TrafficRoute"| KumaProxy2["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Target Kuma Envoy Sidecar</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Mutual TLS Decryption & SPIFFE ID&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• TrafficPermission Enforcement&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Collocated Pod Socket Delivery&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        KumaCP -.->|"xDS Policy Stream"| KumaProxy2
+    end
+    
+    subgraph HybridBackends ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Hybrid Multi-Zone & Multi-Platform Backends&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        KumaProxy2 --> PodBackend["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Kubernetes Microservice Pod</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• In-Cluster Linux Workload&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Listening on Local Port :8080&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        KumaProxy1 -.->|"Cross-Zone / VPC Peering"| VMBackend["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>External Virtual Machine (VM)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Bare-Metal / AWS EC2 Host&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Native Kuma Data Plane Mesh&nbsp;&nbsp;&nbsp;&nbsp;"]
     end
 
     classDef consumer fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
@@ -540,33 +546,40 @@ flowchart TD
 <summary><b>Diagram 7: Dual-Plane FQDN Routing Paradigms (Transparent In-Cluster vs. Split-Horizon Ingress) (Click to Expand / Collapse)</b></summary>
 
 ```mermaid
-flowchart TB
-    subgraph ApproachA ["&nbsp;&nbsp;Approach A: Transparent In-Cluster DNS Interception&nbsp;&nbsp;"]
-        direction TB
-        PodA["&nbsp;&nbsp;&nbsp;&nbsp;Client Pod in Cluster&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;Calls: http://backend.internal.corp/api&nbsp;&nbsp;"]
-        OCPDNS["&nbsp;&nbsp;&nbsp;&nbsp;OpenShift CoreDNS (dns-default)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;Evaluates spec.servers zone forwarding&nbsp;&nbsp;"]
-        InfraDNS["&nbsp;&nbsp;&nbsp;&nbsp;Secondary Resolver (infra-dns)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;CoreDNS rewrite plugin maps to ClusterIP&nbsp;&nbsp;"]
-        TraefikA["&nbsp;&nbsp;&nbsp;&nbsp;Traefik Edge / Ingress Router&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;Matches Host(`backend.internal.corp`)&nbsp;&nbsp;"]
-        DestA["&nbsp;&nbsp;&nbsp;&nbsp;Target Microservice Pods&nbsp;&nbsp;&nbsp;&nbsp;"]
+flowchart TD
+    subgraph ApproachA ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;APPROACH A: Transparent In-Cluster DNS Interception (cloudnative-ingress-mesh-lab)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        PodA["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Workload Client Pod</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Direct Call to Business FQDN:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;backend.internal.corp/api&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Standard OS getaddrinfo&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Zero Proxy Configuration&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        OCPDNS["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>OpenShift Cluster DNS</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• CoreDNS (dns-default)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Evaluates spec.servers rules&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Matches: internal.corp&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Forwards to infra-dns:53&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        InfraDNS["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Secondary CoreDNS (infra-dns)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• In-Cluster Resolver Pods&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Executes rewrite regex rule&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Maps FQDN to ClusterIP VIP&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Returns Traefik ClusterIP&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        TraefikA["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Traefik v3 Ingress Router</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Listens on ClusterIP VIP&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Matches IngressRoute Host:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Host(`backend.internal.corp`)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Applies Middleware Chain&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(RateLimit, Auth, Headers)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        DestA["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Target Microservice Pods</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Workloads (v1 / v2 Canary)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Receives L7 Routed Traffic&nbsp;&nbsp;&nbsp;&nbsp;"]
 
-        PodA -->|"1. Standard DNS Query"| OCPDNS
-        OCPDNS -->|"2. Forwards internal.corp:53"| InfraDNS
+        PodA -->|"1. Resolves backend FQDN"| OCPDNS
+        OCPDNS -->|"2. Forward to infra-dns:53"| InfraDNS
         InfraDNS -->|"3. Returns Traefik VIP"| PodA
-        PodA -->|"4. Direct HTTP Request"| TraefikA
-        TraefikA -->|"5. L7 Routed Traffic"| DestA
+        PodA -->|"4. Sends HTTP to Traefik VIP"| TraefikA
+        TraefikA -->|"5. Proxies to backend pods"| DestA
     end
 
-    subgraph ApproachB ["&nbsp;&nbsp;Approach B: Split-Horizon Ingress via Traefik Service&nbsp;&nbsp;"]
-        direction TB
-        PodB["&nbsp;&nbsp;&nbsp;&nbsp;Client Pod in Cluster&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;Calls: https://traefik.traefik-system.svc:8443&nbsp;&nbsp;<br/>&nbsp;&nbsp;Header: Host: service-b.apps.cluster.local&nbsp;&nbsp;"]
-        NativeDNS["&nbsp;&nbsp;&nbsp;&nbsp;Native OpenShift CoreDNS&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;Resolves *.svc.cluster.local natively&nbsp;&nbsp;"]
-        TraefikB["&nbsp;&nbsp;&nbsp;&nbsp;Traefik Edge / Internal Listener&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;Terminates mTLS + Matches Host Header&nbsp;&nbsp;"]
-        DestB["&nbsp;&nbsp;&nbsp;&nbsp;Target Microservice Pods&nbsp;&nbsp;&nbsp;&nbsp;"]
+    DestA ~~~ PodB
 
-        PodB -->|"1. Standard svc Query"| NativeDNS
-        NativeDNS -->|"2. Returns Traefik ClusterIP"| PodB
-        PodB -->|"3. HTTPS + Client Cert + Host Header"| TraefikB
-        TraefikB -->|"4. Verified mTLS & Routed Traffic"| DestB
+    subgraph ApproachB ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;APPROACH B: Split-Horizon Ingress via Traefik Service (traefik-fqdn-management-poc)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        PodB["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Workload Pod (service-a)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Calls Traefik Native Service:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;traefik-loadbalancer&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.traefik-system.svc:8443&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Injects HTTP Host Header:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;service-b.apps.cluster.local&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Presents Client mTLS Cert&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        NativeDNS["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Native OpenShift CoreDNS</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• CoreDNS (dns-default)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Resolves *.svc.cluster.local&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 100% Native Resolution&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 0% DNS Operator Patches&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Returns Traefik ClusterIP&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        TraefikB["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Traefik v3 Edge Router</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Port :8443 Internal Listener&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Terminates Strict mTLS:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;RequireAndVerifyClientCert&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Matches HTTP Host Header&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Enforces Pod CIDR Allowlist&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        DestB["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Target Pods (service-b)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Upstream Endpoints (:8443)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Authenticated via mTLS&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Network-Policy Isolated&nbsp;&nbsp;&nbsp;&nbsp;"]
+
+        PodB -->|"1. Resolves traefik svc"| NativeDNS
+        NativeDNS -->|"2. Returns Traefik Service IP"| PodB
+        PodB -->|"3. Connects: Cert + Host"| TraefikB
+        TraefikB -->|"4. Verifies mTLS & Routes"| DestB
     end
 
     classDef app fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;

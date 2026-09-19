@@ -374,9 +374,9 @@ flowchart TD
         KumaSidecarA ==>|"mTLS Tunnel (Mutual Envoy)"| KumaSidecarB
     end
 
-    subgraph ControlPlanes ["&nbsp;&nbsp;&nbsp;&nbsp;Control Planes&nbsp;&nbsp;&nbsp;&nbsp;"]
-        KIC["&nbsp;&nbsp;&nbsp;&nbsp;Kong Ingress Controller (KIC)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;Translates Gateway API to Kong DB-less Admin API&nbsp;&nbsp;&nbsp;&nbsp;"]
-        KumaCP["&nbsp;&nbsp;&nbsp;&nbsp;Kuma Control Plane (kuma-cp)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;Manages Multi-Zone Mesh Policies via xDS&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph ControlPlanes ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Control Planes (Decoupled Policy & Ingress Translation)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        KIC["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Kong Ingress Controller (KIC)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Translates Gateway API Specifications&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Synchronizes Kong DB-less Admin API&nbsp;&nbsp;&nbsp;&nbsp;"]
+        KumaCP["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Kuma Control Plane (kuma-cp)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Distributes Multi-Zone Mesh Policies&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Dynamic Envoy xDS v3 Configuration Sync&nbsp;&nbsp;&nbsp;&nbsp;"]
     end
 
     KIC -.->|"Declarative Admin API"| KongGW
