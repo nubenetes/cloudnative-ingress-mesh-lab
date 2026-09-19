@@ -1,0 +1,38 @@
+# Production IngressRoute for FQDN-based East-West and North-South Routing
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: fqdn-internal-external-route
+  namespace: lab-traefik
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`backend.internal.corp`) && PathPrefix(`/api`)
+      kind: Rule
+      services:
+        - name: backend-v1
+          port: 8080
+          weight: 90
+        - name: backend-v2
+          port: 8080
+          weight: 10
+      middlewares:
+        - name: edge-rate-limit
+        - name: security-headers
+---
+# CoreDNS Rewrite ConfigMap Patch Reference
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  internal.server: |
+    internal.corp:53 {
+        errors
+        cache 30
+        rewrite name regex (.*)\.internal\.corp traefik.traefik-system.svc.cluster.local answer auto
+        forward . /etc/resolv.conf
+    }

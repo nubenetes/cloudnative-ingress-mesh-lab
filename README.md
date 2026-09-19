@@ -165,6 +165,7 @@ cloudnative-ingress-mesh-lab/
 ├── Makefile                  # Global automation orchestrator for labs
 ├── docs/                     # Comprehensive architectural deep dives
 │   ├── ARCHITECTURE.md       # Multi-layer packet flow analyses and tradeoffs
+│   ├── FQDN_ROUTING.md       # Dual-plane (N-S & E-W) FQDN routing across mesh & non-mesh
 │   ├── LAB_CILIUM.md         # Step-by-step automated PoC: Kernel-level eBPF Gateway & Mesh
 │   ├── LAB_ISTIO_AMBIENT.md  # Step-by-step automated PoC: Sidecarless Istio Ambient
 │   └── LAB_TRAEFIK_EDGE.md   # Step-by-step automated PoC: Gateway API-native Edge Router

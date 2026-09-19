@@ -1,0 +1,34 @@
+# Cilium DNS-Aware L7 Egress and East-West FQDN Network Policy
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: fqdn-zero-trust-egress
+  namespace: lab-cilium
+spec:
+  description: "Allow backend workloads to reach CoreDNS and whitelist specific internal and external FQDNs"
+  endpointSelector:
+    matchLabels:
+      app: backend
+  egress:
+    # 1. Allow DNS queries to kube-dns/CoreDNS
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+          rules:
+            dns:
+              - matchPattern: "*"
+    # 2. Dynamic L7 FQDN Filtering (intercepted by Cilium eBPF DNS proxy)
+    - toFQDNs:
+        - matchName: "api.payments.internal.corp"
+        - matchPattern: "*.stripe.com"
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+            - port: "8080"
+              protocol: TCP
