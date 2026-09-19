@@ -28,6 +28,7 @@
 [![Sidecarless Architecture](https://img.shields.io/badge/Data%20Plane-Sidecarless%20%7C%20eBPF%20%7C%20HBONE-informational.svg)](docs/ARCHITECTURE.md)
 [![LinkedIn Newsletter EN](https://img.shields.io/badge/LinkedIn%20Newsletter-English%20Edition-0A66C2.svg?logo=linkedin&logoColor=white)](LINKEDIN_NEWSLETTER_EN.md)
 [![LinkedIn Newsletter ES](https://img.shields.io/badge/Bolet%C3%ADn%20LinkedIn-Edici%C3%B3n%20Espa%C3%B1ol-0A66C2.svg?logo=linkedin&logoColor=white)](LINKEDIN_NEWSLETTER_ES.md)
+[![YouTube Masterclasses](https://img.shields.io/badge/YouTube-@nubenetes%20Masterclasses-FF0000.svg?logo=youtube&logoColor=white)](https://youtube.com/@nubenetes)
 
 ---
 
@@ -109,6 +110,7 @@
   - [8.6 Red Hat OpenShift Compliance & Platform Hardening](#86-red-hat-openshift-compliance--platform-hardening)
   - [8.7 Industry Standards for Zero-Trust & Identity](#87-industry-standards-for-zero-trust--identity)
 - [9. Companion Projects & Ecosystem Cross-References](#9-companion-projects--ecosystem-cross-references)
+- [10. 🎬 YouTube Video Masterclasses & Architectural Walkthroughs](#10--youtube-video-masterclasses--architectural-walkthroughs)
 
 ---
 
@@ -895,4 +897,55 @@ Within the **nubenetes** cloud-native engineering ecosystem, this multi-engine l
 | **Target Infrastructure** | **Distribution-Agnostic**: Identical manifests for Bare-Metal, Kind, OpenShift, EKS, AKS, GKE, and RKE2. | **AWS ROSA Optimized**: Leverages AWS Network Load Balancers (NLB) with PROXY protocol v2, ExternalDNS with Route 53, and AWS VPC networking. |
 | **Inter-Service Security** | Compares in-kernel eBPF socket maps, Istio Ambient ztunnel HBONE mTLS, and Traefik reverse-proxying. | Focuses on mesh-less Traefik mTLS (`TLSOption` with `RequireAndVerifyClientCert`), Gateway API `BackendTLSPolicy`, and OVN CIDR allowlists. |
 | **Detailed Comparison** | See [`docs/FQDN_ROUTING.md#214-cross-repository-deep-dive`](docs/FQDN_ROUTING.md#214-cross-repository-deep-dive-how-traefik-fqdn-management-poc-openshift-aws-bypasses-coredns-forwarders--pod-hostaliases). | See [`COMPARATIVE_MATRIX.md`](https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws/blob/main/COMPARATIVE_MATRIX.md). |
+
+---
+
+## 10. 🎬 YouTube Video Masterclasses & Architectural Walkthroughs
+
+The technical concepts, multi-engine comparisons, and FQDN patterns explored across this repository are accompanied by deep-dive video sessions published on the official [**nubenetes YouTube Channel (@nubenetes)**](https://youtube.com/@nubenetes).
+
+| Video Masterclass | Topic & Architectural Scope | Watch on YouTube |
+| :--- | :--- | :--- |
+| **Unified FQDN Routing with Traefik alternatives** | Alternatives to Traefik for unified FQDN routing: in-kernel eBPF Cilium vs. Istio Ambient mode, sidecarless data plane efficiency (0 MB pod RAM overhead), OpenShift CoreDNS immutability, and L4 vs. L7 packet flow analysis. | [▶️ Ver Vídeo (8:14)](https://www.youtube.com/watch?v=xuDtcUZYeHU) |
+| **Gateway API y FQDNs** | Evolution of the Kubernetes Gateway API standard (`gateway.networking.k8s.io/v1`) towards 2026, dual-plane FQDN resolution (North-South external ingress & East-West in-cluster microservices), and avoiding environment drift across EKS, AKS, GKE, and ROSA. | [▶️ Ver Vídeo (8:44)](https://www.youtube.com/watch?v=vay32AcPJ9Q) |
+| **FQDN unificado en OpenShift para north-south y east-west con Traefik y Gateway API** | Solving the OpenShift CoreDNS immutability barrier with Traefik Proxy v3 and Kubernetes Gateway API without paying the sidecar memory tax. Contrasts Pattern A (DNS Operator Zone Forwarding) vs. Pattern B (Split-Horizon Route 53). | [▶️ Ver Vídeo (9:25)](https://www.youtube.com/watch?v=zUq_CYC7vM8) |
+| **OpenShift con FQDN en north-south y east-west: Traefik vs Gateway API** | End-to-end architectural walkthrough on Red Hat OpenShift on AWS (ROSA): Traefik CRDs (`IngressRoute`) vs. standard Gateway API (`HTTPRoute`), AWS NLB PROXY Protocol v2, strict mTLS (TLS 1.3), and `restricted-v2` SCC compliance. | [▶️ Ver Vídeo (9:06)](https://www.youtube.com/watch?v=kIEqhHRf-Ks) |
+
+### Detailed Video Reference Breakdown
+
+#### 1. [Unified FQDN Routing with Traefik alternatives](https://www.youtube.com/watch?v=xuDtcUZYeHU)
+* **URL:** [https://www.youtube.com/watch?v=xuDtcUZYeHU](https://www.youtube.com/watch?v=xuDtcUZYeHU)
+* **Duration:** 8m 14s
+* **Technical Scope & Key Points:**
+  - Addresses the "Holy Grail" of cloud-native networking: Unified FQDN routing for East-West internal microservices and North-South external ingress using corporate domains (e.g. `api.domain.com`) without fragile DNS hacks.
+  - Deep-dive into the OpenShift Cluster DNS Operator CoreDNS immutability barrier (`dns.operator.openshift.io/default`).
+  - Evaluates edge proxy routing (Traefik v3 Pattern A & B) against next-generation sidecarless service meshes (in-kernel Cilium eBPF via `sockops` and Istio Ambient `ztunnel` + HBONE).
+  - Quantifies the memory and latency savings of eliminating the 100GB–250GB RAM "sidecar tax" in large-scale Kubernetes clusters.
+
+#### 2. [Gateway API y FQDNs](https://www.youtube.com/watch?v=vay32AcPJ9Q)
+* **URL:** [https://www.youtube.com/watch?v=vay32AcPJ9Q](https://www.youtube.com/watch?v=vay32AcPJ9Q)
+* **Duration:** 8m 44s
+* **Technical Scope & Key Points:**
+  - Comprehensive analysis of the Kubernetes Gateway API standard (`gateway.networking.k8s.io/v1`) reaching GA and de jure enterprise adoption.
+  - Explains the Dual-Plane FQDN dilemma: why configuring an `HTTPRoute` matching `Host("api.corp.internal")` fails for in-cluster microservices unless Layer 4 DNS resolution is explicitly solved.
+  - Strategies for unifying external client hostnames and internal RPC endpoints to eliminate conditional logic (`EXTERNAL_URL` vs. `INTERNAL_URL`) in application code.
+  - Cross-platform portability across AWS ROSA, Azure AKS, Google Cloud GKE Dataplane V2, and bare-metal environments.
+
+#### 3. [FQDN unificado en OpenShift para north-south y east-west con Traefik y Gateway API](https://www.youtube.com/watch?v=zUq_CYC7vM8)
+* **URL:** [https://www.youtube.com/watch?v=zUq_CYC7vM8](https://www.youtube.com/watch?v=zUq_CYC7vM8)
+* **Duration:** 9m 25s
+* **Technical Scope & Key Points:**
+  - Platform engineering solution for Red Hat OpenShift: implementing unified domain routing without the operational overhead and memory consumption of traditional sidecar proxies.
+  - Overcoming the OpenShift 4.14–4.20+ CoreDNS lockdown using Traefik Proxy v3 (~45MB RAM footprint) as an unprivileged Gateway API controller.
+  - Side-by-side evaluation of Pattern A (Transparent Interception via secondary unprivileged CoreDNS forwarder) vs. Pattern B (Split-Horizon Ingress via AWS Route 53 Private Hosted Zones).
+  - Concrete implementation manifests and live verification workflows.
+
+#### 4. [OpenShift con FQDN en north-south y east-west: Traefik vs Gateway API](https://www.youtube.com/watch?v=kIEqhHRf-Ks)
+* **URL:** [https://www.youtube.com/watch?v=kIEqhHRf-Ks](https://www.youtube.com/watch?v=kIEqhHRf-Ks)
+* **Duration:** 9m 06s
+* **Technical Scope & Key Points:**
+  - Hands-on architectural walkthrough on Red Hat OpenShift on AWS (ROSA): Solution A (Traefik native CRDs: `IngressRoute`, `Middleware`, `TLSOption`) vs. Solution B (Kubernetes Gateway API: `Gateway`, `HTTPRoute`, `BackendTLSPolicy`).
+  - Mitigating public hairpinning by routing internal East-West traffic directly through the ingress controller.
+  - Enforcing strict mutual TLS (mTLS) with TLS 1.3 modern ciphers and SAN verification.
+  - Hardening for OpenShift Security Context Constraints (`restricted-v2` SCC) and integrating AWS Network Load Balancer (NLB) with PROXY Protocol v2 to preserve true client source IPs.
 

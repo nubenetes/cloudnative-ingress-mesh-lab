@@ -1310,6 +1310,17 @@ flowchart TD
 - **Companion Architecture Repository**: [https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws](https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws)  
   *Production-grade reference implementation demonstrating Traefik v3 and Gateway API on Red Hat OpenShift (ROSA) on AWS with zero CoreDNS modifications, split-horizon ingress, and sidecarless mTLS.*
 
+### 🎬 Video Masterclasses & Architectural Sessions (YouTube @nubenetes)
+
+- 🎙️ [**Unified FQDN Routing with Traefik alternatives** (8:14)](https://www.youtube.com/watch?v=xuDtcUZYeHU)  
+  *In-kernel Cilium eBPF vs. Istio Ambient mode for Unified FQDN routing without sidecars, OpenShift CoreDNS immutability, and L4 vs. L7 mechanics.*
+- 🎙️ [**Gateway API y FQDNs** (8:44)](https://www.youtube.com/watch?v=vay32AcPJ9Q)  
+  *Kubernetes Gateway API v1.1 GA, dual-plane FQDN resolution, and overcoming environment drift across multi-cloud distros.*
+- 🎯 [**FQDN unificado en OpenShift para north-south y east-west con Traefik y Gateway API** (9:25)](https://www.youtube.com/watch?v=zUq_CYC7vM8)  
+  *Solving OpenShift 4.14–4.20+ CoreDNS immutability with Traefik Proxy v3 and Gateway API: Pattern A vs. Pattern B.*
+- 🚀 [**OpenShift con FQDN en north-south y east-west: Traefik vs Gateway API** (9:06)](https://www.youtube.com/watch?v=kIEqhHRf-Ks)  
+  *Architectural walkthrough on ROSA: Traefik IngressRoute CRDs vs. Gateway API HTTPRoute, AWS NLB with PROXY Protocol v2, and strict mTLS.*
+
 ---
 
 ⬅️ Previous: [Architecture Deep Dive](ARCHITECTURE.md) | 🏠 [Home](../README.md) | ➡️ Next: [Gateway API without Traefik](GATEWAY_API_WITHOUT_TRAEFIK.md)
