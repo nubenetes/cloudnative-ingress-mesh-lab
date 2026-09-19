@@ -10,6 +10,26 @@
 
 ---
 
+> [!IMPORTANT]
+> ### 🌟 Key Architectural Value & Industry Differentiators of This Laboratory
+>
+> 1. **100% Kubernetes Gateway API Native (`gateway.networking.k8s.io/v1`)**:
+>    - **Zero Legacy Ingress**: Entirely abandons `networking.k8s.io/v1 Ingress` in favor of decoupled, role-oriented `GatewayClass`, `Gateway`, and `HTTPRoute` resources across **all** implementations.
+>    - **Automated Experimental Channel Bootstrap**: Includes automated provisioning of experimental channel CRDs (`make install-gateway-api`) required for Istio Waypoint proxies (`gatewayClassName: istio-waypoint`) and advanced policy attachments.
+> 2. **2026 Modern Sidecarless Data Plane Paradigm**:
+>    - **In-Kernel eBPF (Cilium)**: Bypasses the host TCP/IP stack via Linux `sockops` socket-layer short-circuiting with wire-speed Layer 4 transmission.
+>    - **Split-Plane Sidecarless Mesh (Istio Ambient / Red Hat OSSM 3.x)**: Decouples node-level L4 mutual TLS (`ztunnel` over HBONE) from opt-in namespace L7 traffic governance (`waypoint`), slashing memory overhead by 80%.
+>    - **Pure Edge Ingress (Traefik v3)**: Demonstrates production canary splitting, rate limiting, and mTLS at the perimeter *without* the operational tax of a service mesh.
+> 3. **Complete Dual-Plane FQDN Routing (North-South & East-West)**:
+>    - Solves both external cluster ingress and internal pod-to-pod microservice calls via domain names with and without a service mesh.
+>    - Resolves **OpenShift 4.20+ CoreDNS immutability** using a fully supported secondary unprivileged DNS forwarder pattern.
+> 4. **Production-Grade Enterprise Hardening**:
+>    - Validated configurations for OpenShift SecurityContextConstraints (`restricted-v2`, `anyuid`, `privileged`), SELinux contexts (`spc_t`), and FIPS 140-3 cryptography.
+> 5. **Turnkey Automated Verification**:
+>    - Zero placeholders, zero `# configure here` comments. Includes statistical canary verification engines (`test-canary.sh`), cryptographic mTLS validation (`test-mtls.sh`), and unified `Makefile` automation.
+
+---
+
 ## Documentation Index & Navigation
 
 | Document | Focus Area |
@@ -24,6 +44,7 @@
 
 ## Table of Contents
 - [1. Executive Summary & 2026 Landscape Shifts](#1-executive-summary--2026-landscape-shifts)
+  - [1.1 The Gateway API Advantage: Legacy Ingress vs. Modern Gateway API](#11-the-gateway-api-advantage-legacy-ingress-vs-modern-gateway-api)
 - [2. Hands-on PoC Evaluation Matrix (Cilium vs. Istio Ambient vs. Traefik v3)](#2-hands-on-poc-evaluation-matrix-cilium-vs-istio-ambient-vs-traefik-v3)
 - [3. Extended Ecosystem Alternatives & Competitive Landscape](#3-extended-ecosystem-alternatives--competitive-landscape)
   - [3.1 Linkerd: The Micro-Proxy (Rust) Sidecar Defense & Commercial Pivot](#31-linkerd-the-micro-proxy-rust-sidecar-defense--commercial-pivot)
@@ -73,6 +94,20 @@ Modern 2026 infrastructures employ **Sidecarless Architectures**:
 - **Split-Layer Ambient Data Planes (Istio Ambient)**: Decoupling L4 transport security (Zero-Trust mTLS and identity verification handled at the node level by the Rust-based `ztunnel`) from L7 traffic management (handled by optional, namespace-scoped `waypoint` Envoy proxies).
 
 This laboratory repository provides production-grade reference implementations, automated deployment harnesses, and comparative benchmarks for **Cilium eBPF**, **Istio Ambient**, and **Traefik v3** on both vanilla Kubernetes and Red Hat OpenShift.
+
+### 1.1 The Gateway API Advantage: Legacy Ingress vs. Modern Gateway API
+
+The table below contrasts the legacy Ingress abstraction with the modern Kubernetes Gateway API (`gateway.networking.k8s.io/v1`) implemented across this repository:
+
+| Capability Dimension | Legacy Ingress (`networking.k8s.io/v1`) | Modern Gateway API (`gateway.networking.k8s.io/v1`) | Laboratory Realization in This Repository |
+| :--- | :--- | :--- | :--- |
+| **Persona Decoupling** | Monolithic: 1 resource shared by Ops, Devs, & NetEng | Role-Oriented: `GatewayClass` (Infra), `Gateway` (Cluster Ops), `*Route` (App Devs) | Demonstrated across all 3 labs with clear RBAC boundaries |
+| **Portability** | Vendor lock-in via custom annotations (`nginx.ingress...`, `traefik...`) | First-class portable specification with conformance validation test suites | Identical `HTTPRoute` specs run on Cilium, Istio, and Traefik |
+| **Traffic Splitting / Canary** | Flaky annotations or required service mesh CRDs (`VirtualService`) | Declarative weights natively built into `HTTPRoute.spec.rules.backendRefs` | Automated 90/10 canary split tested via `test-canary.sh` |
+| **Cross-Namespace Routing** | Insecure or completely disallowed | Secure cross-namespace binding governed by `ReferenceGrant` | Multi-tenant namespace routing (`lab-mesh`, `lab-edge`) |
+| **Protocol Coverage** | HTTP/1.1 and simple TLS termination only | First-class `HTTPRoute`, `GRPCRoute`, `TLSRoute`, `TCPRoute`, `UDPRoute` | HTTP/2, HBONE, gRPC, and mTLS passthrough validated |
+| **Service Mesh Binding** | Ingress only; cannot express East-West mesh routing | Unified API for both North-South edge ingress and East-West mesh routing | Istio Waypoint & Cilium L7 bind directly to `HTTPRoute` |
+| **CRD Automated Install** | Manual manifest scraping per vendor | Standardized experimental channel release (`GATEWAY_API_VERSION ?= v1.1.0`) | Automated via `make install-gateway-api` |
 
 ---
 
