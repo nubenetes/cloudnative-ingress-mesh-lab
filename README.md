@@ -34,6 +34,13 @@
   - [Diagram 2: Data Plane Structural Comparison](#diagram-2-structural-data-plane-comparison-sidecar-vs-ebpf-bypass-vs-istio-ambient)
 - [5. Repository Structure](#5-repository-structure)
 - [6. Quick Start & Global Automation](#6-quick-start--global-automation)
+- [7. Authoritative References & Sources of Truth](#7-authoritative-references--sources-of-truth)
+  - [7.1 Kubernetes Gateway API & Networking Standards](#71-kubernetes-gateway-api--networking-standards)
+  - [7.2 Linux Kernel eBPF & Socket-Layer Acceleration (`sockops`)](#72-linux-kernel-ebpf--socket-layer-acceleration-sockops)
+  - [7.3 Istio Ambient Mode & HBONE Architecture](#73-istio-ambient-mode--hbone-architecture)
+  - [7.4 Traefik Proxy v3 (Edge Gateway & Ingress)](#74-traefik-proxy-v3-edge-gateway--ingress)
+  - [7.5 Red Hat OpenShift Compliance & Platform Hardening](#75-red-hat-openshift-compliance--platform-hardening)
+  - [7.6 Industry Standards for Zero-Trust & Identity](#76-industry-standards-for-zero-trust--identity)
 
 ---
 
@@ -257,3 +264,63 @@ make clean-all
 ```
 
 For complete step-by-step deep-dives, proceed directly to the [Architecture Deep Dive](docs/ARCHITECTURE.md) and individual lab runbooks in [docs/](docs/).
+
+---
+
+## 7. Authoritative References & Sources of Truth
+
+The architectural analyses, comparative metrics, kernel configurations, and YAML payloads across this repository are grounded in official upstream specifications, Linux kernel documentation, and vendor implementation standards:
+
+### 7.1 Kubernetes Gateway API & Networking Standards
+- **Kubernetes Gateway API v1.1+ Specification (GA)**: [https://gateway-api.sigs.k8s.io/](https://gateway-api.sigs.k8s.io/)  
+  *Official SIG-Network specification defining the role-oriented resource model (`GatewayClass`, `Gateway`, `HTTPRoute`, `TLSRoute`, `GRPCRoute`).*
+- **GEP-709: Gateway API vs. Ingress Evolution Rationale**: [https://gateway-api.sigs.k8s.io/geps/gep-709/](https://gateway-api.sigs.k8s.io/geps/gep-709/)  
+  *Architectural justification for the formal deprecation of `networking.k8s.io/v1 Ingress` in favor of expressive, multi-tenant Gateway API objects.*
+- **Kubernetes Gateway API Conformance Test Suite & Reports**: [https://gateway-api.sigs.k8s.io/concepts/conformance/](https://gateway-api.sigs.k8s.io/concepts/conformance/)  
+  *Upstream compliance validation matrices verifying feature support across ingress and service mesh controllers.*
+- **IETF RFC 9113: HTTP/2 Specification (CONNECT Tunneling)**: [https://datatracker.ietf.org/doc/html/rfc9113](https://datatracker.ietf.org/doc/html/rfc9113)  
+  *The underlying IETF standard governing HTTP/2 stream multiplexing and the `CONNECT` method used by HBONE data planes.*
+
+### 7.2 Linux Kernel eBPF & Socket-Layer Acceleration (`sockops`)
+- **Linux Kernel Documentation: BPF Program Types (`sock_ops` & `sk_msg`)**: [https://docs.kernel.org/bpf/](https://docs.kernel.org/bpf/)  
+  *Primary kernel source of truth detailing socket map redirection via `bpf_msg_redirect_hash()` and `BPF_MAP_TYPE_SOCKHASH`.*
+- **Cilium eBPF Host-Routing & Socket-Level Acceleration Architecture**: [https://docs.cilium.io/en/stable/network/ebpf/](https://docs.cilium.io/en/stable/network/ebpf/)  
+  *Technical reference on how Cilium short-circuits the host TCP/IP stack (`veth`, `iptables`, `conntrack`) for local socket pairs.*
+- **Cilium Gateway API Implementation Guide**: [https://docs.cilium.io/en/stable/network/servicemesh/gateway-api/](https://docs.cilium.io/en/stable/network/servicemesh/gateway-api/)  
+  *Configuration reference for Cilium's native Gateway controller, Envoy daemon lifecycle, and L7 HTTPRoute translation.*
+- **Isovalent Architecture Whitepaper: Eliminating the Sidecar Tax with eBPF**: [https://isovalent.com/blog/post/2021-12-08-ebpf-servicemesh/](https://isovalent.com/blog/post/2021-12-08-ebpf-servicemesh/)  
+  *Empirical performance benchmarks documenting context-switch reductions, memory overhead, and P99 latency savings.*
+
+### 7.3 Istio Ambient Mode & HBONE Architecture
+- **Istio Ambient Mode Architectural Specification**: [https://istio.io/latest/docs/ambient/overview/](https://istio.io/latest/docs/ambient/overview/)  
+  *Official Istio documentation covering the architectural decoupling of Layer 4 transport security from Layer 7 application policies.*
+- **Istio ztunnel (Zero-Trust Tunnel) Technical Reference**: [https://istio.io/latest/docs/ambient/architecture/ztunnel/](https://istio.io/latest/docs/ambient/architecture/ztunnel/)  
+  *In-depth dissection of the Rust-based node daemonset, in-pod traffic capture, and mTLS encapsulation on port 15008.*
+- **Istio Waypoint Proxies & Gateway API Conformance**: [https://istio.io/latest/docs/ambient/usage/waypoint/](https://istio.io/latest/docs/ambient/usage/waypoint/)  
+  *Operational runbook for provisioning namespace-scoped and service-scoped Envoy instances using `gatewayClassName: istio-waypoint`.*
+- **Istio Ambient Security Assessment & Threat Modeling**: [https://istio.io/latest/docs/ambient/architecture/security/](https://istio.io/latest/docs/ambient/architecture/security/)  
+  *Cryptographic identity guarantees, SPIFFE X.509 certificate exchange, and workload isolation verifications.*
+
+### 7.4 Traefik Proxy v3 (Edge Gateway & Ingress)
+- **Traefik v3 Kubernetes Gateway API Provider Documentation**: [https://doc.traefik.io/traefik/providers/kubernetes-gateway/](https://doc.traefik.io/traefik/providers/kubernetes-gateway/)  
+  *Official provider reference for Traefik v3 GatewayClass controllers, HTTPRoute resolution, and extension filters.*
+- **Traefik Middleware Engine Specification**: [https://doc.traefik.io/traefik/middlewares/overview/](https://doc.traefik.io/traefik/middlewares/overview/)  
+  *Reference guide for rate limiting algorithms (token bucket), circuit breaking expressions, security headers, and forward authentication.*
+- **Traefik Observability: Prometheus Metrics & OpenTelemetry**: [https://doc.traefik.io/traefik/observability/metrics/prometheus/](https://doc.traefik.io/traefik/observability/metrics/prometheus/)  
+  *Metrics exposition schemas for ingress request duration quantiles, retry rates, and active backend connections.*
+
+### 7.5 Red Hat OpenShift Enterprise Compliance & Platform Hardening
+- **OpenShift Container Platform: Security Context Constraints (SCCs)**: [https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html](https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html)  
+  *Enterprise security authorization reference defining RBAC boundaries for `restricted-v2`, `anyuid`, and `privileged` workloads.*
+- **Red Hat OpenShift Service Mesh 3.x (OSSM 3 / Ambient Architecture)**: [https://docs.openshift.com/container-platform/latest/service_mesh/](https://docs.openshift.com/container-platform/latest/service_mesh/)  
+  *Red Hat's enterprise deployment model for Istio Ambient operating seamlessly over default OVN-Kubernetes networking.*
+- **Red Hat Enterprise Linux CoreOS (RHCOS): SELinux Super Privileged Containers**: [https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/)  
+  *SELinux type definitions (`spc_t`), container isolation boundaries, and `/sys/fs/bpf` mount propagation policies on immutable nodes.*
+- **OVN-Kubernetes Architecture & Multus CNI Secondary Networks**: [https://docs.openshift.com/container-platform/latest/networking/ovn_kubernetes_network_provider/about-ovn-kubernetes.html](https://docs.openshift.com/container-platform/latest/networking/ovn_kubernetes_network_provider/about-ovn-kubernetes.html)  
+  *Architecture guide for OpenShift's default Geneve overlay CNI and secondary network interface attachment definitions.*
+
+### 7.6 Industry Standards for Zero-Trust & Identity
+- **NIST Special Publication 800-207: Zero Trust Architecture**: [https://csrc.nist.gov/publications/detail/sp/800-207/final](https://csrc.nist.gov/publications/detail/sp/800-207/final)  
+  *Authoritative federal guidelines for continuous cryptographic identity verification, micro-segmentation, and policy enforcement points.*
+- **SPIFFE / SPIRE Workload Identity Specification**: [https://spiffe.io/](https://spiffe.io/)  
+  *The CNCF standard governing cryptographic software identity issuance (`spiffe://...`) leveraged by Istio Ambient and Cilium mutual authentication.*
