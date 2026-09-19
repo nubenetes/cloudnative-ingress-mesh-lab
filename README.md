@@ -915,6 +915,8 @@ The technical concepts, multi-engine comparisons, and FQDN patterns explored acr
 | **Gateway API y FQDNs** | Spanish 🇪🇸 *(Multilingual ⚙️)* | Evolution of the Kubernetes Gateway API standard (`gateway.networking.k8s.io/v1`) towards 2026, dual-plane FQDN resolution (North-South external ingress & East-West in-cluster microservices), and avoiding environment drift across EKS, AKS, GKE, and ROSA. | [▶️ Ver Vídeo (8:44)](https://www.youtube.com/watch?v=vay32AcPJ9Q) |
 | **FQDN unificado en OpenShift para north-south y east-west con Traefik y Gateway API** | Spanish 🇪🇸 *(Multilingual ⚙️)* | Solving the OpenShift CoreDNS immutability barrier with Traefik Proxy v3 and Kubernetes Gateway API without paying the sidecar memory tax. Contrasts Pattern A (DNS Operator Zone Forwarding) vs. Pattern B (Split-Horizon Route 53). | [▶️ Ver Vídeo (9:25)](https://www.youtube.com/watch?v=zUq_CYC7vM8) |
 | **OpenShift con FQDN en north-south y east-west: Traefik vs Gateway API** | Spanish 🇪🇸 *(Multilingual ⚙️)* | End-to-end architectural walkthrough on Red Hat OpenShift on AWS (ROSA): Traefik CRDs (`IngressRoute`) vs. standard Gateway API (`HTTPRoute`), AWS NLB PROXY Protocol v2, strict mTLS (TLS 1.3), and `restricted-v2` SCC compliance. | [▶️ Ver Vídeo (9:06)](https://www.youtube.com/watch?v=kIEqhHRf-Ks) |
+| **Podcast: FQDN Unificado y el Futuro de Ingress/Service Mesh** | Spanish 🇪🇸 *(Multilingual ⚙️)* | Technical audio podcast *(audio-only, no video/slides)*: Why forcing dual URLs (`INTERNAL_URL` / `EXTERNAL_URL`) is an anti-pattern, solving Unified FQDN with Traefik v3 and Gateway API, CoreDNS immutability, and engineering culture. | [🎙️ Escuchar Podcast (15:55)](https://www.youtube.com/watch?v=pUilWzKDgFQ) |
+| **Podcast: Beyond Ingress with Dual Plane FQDN** | English 🇺🇸 *(Multilingual ⚙️)* | Comprehensive 1-hour technical audio podcast *(audio-only, no video/slides)*: Deep dive into Dual Plane FQDN architecture, eliminating HAProxy reload penalties, sidecarless data plane efficiency (0 MB pod RAM), Split-Horizon DNS, and platform engineering integrity. | [🎙️ Listen to Podcast (59:29)](https://www.youtube.com/watch?v=ID0YEJzv_4E) |
 
 ### 10.1 Detailed Video Reference Breakdown
 
@@ -957,6 +959,28 @@ The technical concepts, multi-engine comparisons, and FQDN patterns explored acr
   - Mitigating public hairpinning by routing internal East-West traffic directly through the ingress controller.
   - Enforcing strict mutual TLS (mTLS) with TLS 1.3 modern ciphers and SAN verification.
   - Hardening for OpenShift Security Context Constraints (`restricted-v2` SCC) and integrating AWS Network Load Balancer (NLB) with PROXY Protocol v2 to preserve true client source IPs.
+
+#### 5. [Podcast: FQDN Unificado y el Futuro de Ingress/Service Mesh](https://www.youtube.com/watch?v=pUilWzKDgFQ)
+* **URL:** [https://www.youtube.com/watch?v=pUilWzKDgFQ](https://www.youtube.com/watch?v=pUilWzKDgFQ)
+* **Duration:** 15m 55s
+* **Format:** Technical Audio Podcast *(Audio-only format without video/slides)*
+* **Language & Audio Settings:** Generated in **Spanish (Español 🇪🇸)** with **Multilingual Audio Tracks** enabled (switch audio language in YouTube player Settings ⚙️ ➔ Audio track).
+* **Technical Scope & Key Points:**
+  - Technical audio deep-dive analyzing why forcing dual endpoints (`INTERNAL_URL` vs. `EXTERNAL_URL`) into applications and IDPs (Backstage, Jenkins, Forgejo, DefectDojo) is a flawed anti-pattern.
+  - Unifying North-South external ingress and East-West internal microservices under a single canonical FQDN with Traefik Proxy v3 and Kubernetes Gateway API.
+  - Overcoming the OpenShift CoreDNS immutability barrier without hairpinning or sidecar memory overhead.
+  - Sidecarless data plane alternatives (Traefik vs. Istio / Envoy vs. in-kernel eBPF Cilium) and engineering leadership reflections on technical integrity vs. Jira ticket churn.
+
+#### 6. [Podcast: Beyond Ingress with Dual Plane FQDN](https://www.youtube.com/watch?v=ID0YEJzv_4E)
+* **URL:** [https://www.youtube.com/watch?v=ID0YEJzv_4E](https://www.youtube.com/watch?v=ID0YEJzv_4E)
+* **Duration:** 59m 29s
+* **Format:** Technical Audio Podcast *(Audio-only format without video/slides)*
+* **Language & Audio Settings:** Generated in **English (Inglés 🇺🇸)** with **Multilingual Audio Tracks** enabled (switch audio language in YouTube player Settings ⚙️ ➔ Audio track).
+* **Technical Scope & Key Points:**
+  - Comprehensive 1-hour technical audio discussion dissecting Dual Plane FQDN architecture on Kubernetes and OpenShift on AWS.
+  - Bypassing OpenShift HAProxy route reload penalties and latency jitter under heavy production concurrency.
+  - Transparent in-cluster microservice routing with 0 MB sidecar RAM overhead, comparing Traefik v3 against Envoy-based meshes and eBPF.
+  - AWS Route 53 Split-Horizon DNS resolution and maintaining architectural integrity in cloud-native platforms.
 
 ---
 

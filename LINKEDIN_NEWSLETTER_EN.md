@@ -318,6 +318,10 @@ For platform engineers who prefer deep-dive video walkthroughs, the architectura
    *Core Topic:* Solving the OpenShift CoreDNS lockdown with Traefik Proxy v3 and Kubernetes Gateway API. Evaluates Pattern A (Transparent Interception via OpenShift DNS Operator forwarding) vs. Pattern B (Split-Horizon Ingress via AWS Route 53).
 4. 🚀 [**OpenShift con FQDN en north-south y east-west: Traefik vs Gateway API**](https://www.youtube.com/watch?v=kIEqhHRf-Ks) *(9m 06s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
    *Core Topic:* Complete architectural walkthrough on Red Hat OpenShift on AWS (ROSA): Traefik CRDs (`IngressRoute`) vs. Gateway API (`HTTPRoute`), AWS NLB integration with PROXY Protocol v2, strict mTLS (TLS 1.3), and `restricted-v2` SCC compliance.
+5. 🎙️ [**Podcast: FQDN Unificado y el Futuro de Ingress/Service Mesh**](https://www.youtube.com/watch?v=pUilWzKDgFQ) *(15m 55s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️ • Format: Audio Podcast without video/slides)*  
+   *Core Topic:* Technical audio podcast (audio-only format without video/slides) examining why forcing dual endpoints (`INTERNAL_URL` vs. `EXTERNAL_URL`) into IDP applications is an anti-pattern, achieving Unified FQDN with Traefik Proxy v3 and Kubernetes Gateway API, bypassing CoreDNS immutability, and engineering culture reflections on real architecture vs. Jira ticket churn.
+6. 🎙️ [**Podcast: Beyond Ingress with Dual Plane FQDN**](https://www.youtube.com/watch?v=ID0YEJzv_4E) *(59m 29s • Original: English 🇺🇸 • Multilingual Audio ⚙️ • Format: Audio Podcast without video/slides)*  
+   *Core Topic:* Comprehensive 1-hour technical audio podcast (audio-only format without video/slides) dissecting Dual Plane FQDN architecture, bypassing OpenShift HAProxy reload limits, transparent in-cluster microservice routing with 0 MB sidecar RAM overhead, Split-Horizon DNS, and platform engineering integrity.
 
 ### ⚡ Related YouTube Shorts (Quick 60–90 Second Deep Dives)
 

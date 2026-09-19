@@ -319,6 +319,10 @@ Para los ingenieros de plataforma y arquitectos que prefieren explicaciones audi
    *Enfoque:* Resolución del bloqueo de CoreDNS en OpenShift 4.14–4.20+ con Traefik Proxy v3 y Gateway API sin peaje de sidecars. Comparativa profunda entre el Patrón A (Reenvío con DNS Operator) y el Patrón B (Split-Horizon con Route 53).
 4. 🚀 [**OpenShift con FQDN en north-south y east-west: Traefik vs Gateway API**](https://www.youtube.com/watch?v=kIEqhHRf-Ks) *(9m 06s • Audio Original: Español 🇪🇸 • Pistas Multilingües ⚙️)*  
    *Enfoque:* Walkthrough arquitectónico completo en OpenShift ROSA (AWS): Traefik CRDs (`IngressRoute`) frente a Gateway API (`HTTPRoute`), mitigación de hairpinning, mTLS estricto (TLS 1.3), SCC `restricted-v2` y AWS NLB con PROXY Protocol v2.
+5. 🎙️ [**Podcast: FQDN Unificado y el Futuro de Ingress/Service Mesh**](https://www.youtube.com/watch?v=pUilWzKDgFQ) *(15m 55s • Audio Original: Español 🇪🇸 • Pistas Multilingües ⚙️ • Formato: Podcast de Audio sin vídeo/slides)*  
+   *Enfoque:* Podcast técnico en formato solo audio que analiza el antipatrón de forzar URLs duales (`INTERNAL_URL` vs. `EXTERNAL_URL`) en aplicaciones de IDP, la consolidación de FQDN unificado en OpenShift y AWS con Traefik v3 y Gateway API, superación del bloqueo de CoreDNS, alternativas sidecarless y reflexiones sobre la cultura técnica frente al "teatro de Jira".
+6. 🎙️ [**Podcast: Beyond Ingress with Dual Plane FQDN**](https://www.youtube.com/watch?v=ID0YEJzv_4E) *(59m 29s • Audio Original: Inglés 🇺🇸 • Pistas Multilingües ⚙️ • Formato: Podcast de Audio sin vídeo/slides)*  
+   *Enfoque:* Podcast técnico de 1 hora en formato solo audio que profundiza en la arquitectura Dual Plane FQDN, eliminación de penalizaciones por recarga de HAProxy, enrutamiento transparente de microservicios sin peaje de memoria de sidecars (0 MB de RAM overhead), DNS Split-Horizon en AWS y defensa del rigor técnico en ingeniería de plataformas.
 
 ### ⚡ YouTube Shorts Relacionados (Píldoras Arquitectónicas de 60–90 Segundos)
 

@@ -1323,6 +1323,10 @@ flowchart TD
   *Solving OpenShift 4.14–4.20+ CoreDNS immutability with Traefik Proxy v3 and Gateway API: Pattern A vs. Pattern B.*
 - 🚀 [**OpenShift con FQDN en north-south y east-west: Traefik vs Gateway API** (9:06)](https://www.youtube.com/watch?v=kIEqhHRf-Ks) *(Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
   *Architectural walkthrough on ROSA: Traefik IngressRoute CRDs vs. Gateway API HTTPRoute, AWS NLB with PROXY Protocol v2, and strict mTLS.*
+- 🎙️ [**Podcast: FQDN Unificado y el Futuro de Ingress/Service Mesh** (15:55)](https://www.youtube.com/watch?v=pUilWzKDgFQ) *(Original: Spanish 🇪🇸 • Multilingual Audio ⚙️ • Technical Audio Podcast / Audio-only)*  
+  *Technical audio podcast (audio-only, no video/slides) on the dual URL anti-pattern, Unified FQDN with Traefik v3 and Gateway API, and engineering culture.*
+- 🎙️ [**Podcast: Beyond Ingress with Dual Plane FQDN** (59:29)](https://www.youtube.com/watch?v=ID0YEJzv_4E) *(Original: English 🇺🇸 • Multilingual Audio ⚙️ • Technical Audio Podcast / Audio-only)*  
+  *Comprehensive 1-hour audio podcast (audio-only, no video/slides) dissecting Dual Plane FQDN, sidecarless data plane efficiency, Split-Horizon DNS, and platform engineering integrity.*
 
 #### ⚡ YouTube Video Shorts (Quick Architectural Concepts)
 
