@@ -58,6 +58,7 @@ This comprehensive guide delivers:
 - [9. Production Deployment Guide & Verified Manifests](#9-production-deployment-guide--verified-manifests)
   - [9.1 Helm Production Configuration (values.yaml)](#91-helm-production-configuration-valuesyaml)
   - [9.2 Core Gateway API Manifests (GatewayClass, Gateway, HTTPRoute, BackendTLSPolicy)](#92-core-gateway-api-manifests-gatewayclass-gateway-httproute-backendtlspolicy)
+- [10. References & Authoritative Sources of Truth](#10-references--authoritative-sources-of-truth)
 
 ---
 
@@ -991,3 +992,32 @@ spec:
   to:
     - group: ""
       kind: Service
+```
+
+---
+
+## 10. References & Authoritative Sources of Truth
+
+- **Traefik Proxy v3 Official Documentation & Kubernetes Gateway Provider**: [https://doc.traefik.io/traefik/providers/kubernetes-gateway/](https://doc.traefik.io/traefik/providers/kubernetes-gateway/)  
+  *Authoritative reference on configuring Traefik as a Gateway API controller, listener bindings, and in-memory routing.*
+- **Traefik Proxy Middleware & ExtensionRef Documentation**: [https://doc.traefik.io/traefik/middlewares/overview/](https://doc.traefik.io/traefik/middlewares/overview/)  
+  *Detailed specification for rate-limiting, circuit breakers, security headers, and authentication middlewares.*
+- **Kubernetes Gateway API v1 Specification (SIG-Network)**: [https://gateway-api.sigs.k8s.io/](https://gateway-api.sigs.k8s.io/)  
+  *Official standard governing GatewayClass, Gateway, HTTPRoute, GRPCRoute, and ReferenceGrant APIs.*
+- **Gateway API GEP-1897: BackendTLSPolicy Specification**: [https://gateway-api.sigs.k8s.io/geps/gep-1897/](https://gateway-api.sigs.k8s.io/geps/gep-1897/)  
+  *Authoritative specification for configuring zero-trust backend TLS/mTLS verification and SAN matching without sidecars.*
+- **Red Hat OpenShift Security Context Constraints (SCCs)**: [https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html](https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html)  
+  *Official guide for deploying unprivileged workloads under the `restricted-v2` SCC on OpenShift 4.14–4.20+.*
+- **AWS Load Balancer Controller Documentation (NLB & PROXY Protocol v2)**: [https://kubernetes-sigs.github.io/aws-load-balancer-controller/](https://kubernetes-sigs.github.io/aws-load-balancer-controller/)  
+  *Reference on provisioning AWS Network Load Balancers with TCP passthrough and client IP preservation.*
+- **ExternalDNS Documentation**: [https://github.com/kubernetes-sigs/external-dns](https://github.com/kubernetes-sigs/external-dns)  
+  *Automated synchronization of Gateway API listener hostnames with AWS Route 53, Cloud DNS, and Azure DNS.*
+- **Companion Reference Implementation: Enterprise Traefik Proxy & FQDN Management on OpenShift (AWS ROSA)**: [https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws](https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws)  
+  *Production repository demonstrating OpenShift `restricted-v2` SCC compliance, PROXY protocol v2, split-horizon FQDN routing, and zero-sidecar `BackendTLSPolicy`.*
+- **Companion Architecture Repository: Enterprise GKE Dataplane V2**: [https://github.com/nubenetes/jenkins-2026](https://github.com/nubenetes/jenkins-2026)  
+  *Production repository evaluating Google-managed Cilium, transparent WireGuard encryption, and Gateway API standard channel.*
+
+---
+
+[🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | [FQDN Routing](FQDN_ROUTING.md) | [Extended Solutions](EXTENDED_SOLUTIONS.md) | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | [Gateway API without Traefik](GATEWAY_API_WITHOUT_TRAEFIK.md) | **Gateway API with Traefik** | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
+

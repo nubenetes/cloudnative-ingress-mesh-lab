@@ -50,6 +50,7 @@ This guide clarifies:
 - [7. Scenario-Based Recommendations: Which Option to Choose?](#7-scenario-based-recommendations-which-option-to-choose)
   - [7.1 Enterprise Master Decision Flowchart](#71-enterprise-master-decision-flowchart)
   - [7.2 Granular Use-Case Evaluation: Recommended vs. Simplest](#72-granular-use-case-evaluation-recommended-vs-simplest)
+- [8. References & Authoritative Sources of Truth](#8-references--authoritative-sources-of-truth)
 
 ---
 
@@ -949,5 +950,29 @@ flowchart TD
 
 ---
 
+## 8. References & Authoritative Sources of Truth
+
+- **Kubernetes Gateway API v1 Specification & Standards**: [https://gateway-api.sigs.k8s.io/](https://gateway-api.sigs.k8s.io/)  
+  *Authoritative specification governing `GatewayClass`, `Gateway`, `HTTPRoute`, `GRPCRoute`, and `ReferenceGrant` APIs maintained by Kubernetes SIG-Network.*
+- **Red Hat OpenShift Service Mesh 3.x (OSSM 3) & Istio Ambient Architecture**: [https://docs.openshift.com/container-platform/latest/service_mesh/](https://docs.openshift.com/container-platform/latest/service_mesh/)  
+  *Official Red Hat documentation on deploying sidecarless Istio Ambient (`ztunnel` + Waypoint) natively over OpenShift's default OVN-Kubernetes CNI.*
+- **Envoy Gateway CNCF Official Documentation**: [https://gateway.envoyproxy.io/](https://gateway.envoyproxy.io/)  
+  *Official upstream architectural reference for translating Kubernetes Gateway API resources into dynamic Envoy xDS v3 configurations.*
+- **Cilium Service Mesh & Gateway API eBPF In-Kernel Architecture**: [https://docs.cilium.io/en/stable/network/servicemesh/gateway-api/](https://docs.cilium.io/en/stable/network/servicemesh/gateway-api/)  
+  *Technical guide detailing in-kernel eBPF socket switching (`sockops`), Envoy daemon integration, and kernel-level WireGuard transparent encryption.*
+- **Red Hat Connectivity Link (Kuadrant) Documentation**: [https://docs.redhat.com/en/documentation/red_hat_connectivity_link](https://docs.redhat.com/en/documentation/red_hat_connectivity_link)  
+  *Official documentation on enterprise multi-cluster Gateway API policy management, distributed rate limiting, and automated multi-cloud DNS routing via `DNSPolicy`.*
+- **Red Hat OpenShift Route to Gateway API Migration Strategy**: [https://access.redhat.com/articles/](https://access.redhat.com/articles/)  
+  *Red Hat architecture whitepaper on the deprecation of legacy OpenShift `Route` and strategic enterprise alignment with the standard Gateway API.*
+- **Linux Kernel BPF Subsystem Documentation**: [https://docs.kernel.org/bpf/](https://docs.kernel.org/bpf/)  
+  *Official Linux kernel documentation for `sock_ops`, `sk_msg`, `BPF_MAP_TYPE_SOCKHASH`, and high-performance socket redirect mechanics.*
+- **Production Reference Implementation 1: Enterprise Cilium in GKE**: [https://github.com/nubenetes/jenkins-2026](https://github.com/nubenetes/jenkins-2026)  
+  *Production repository analyzing Google-managed Cilium (`ADVANCED_DATAPATH`), transparent WireGuard encryption, 3-tier microsegmentation, and zero-sidecar CI/CD pipelines.*
+- **Production Reference Implementation 2: Enterprise Traefik Proxy & FQDN Management on OpenShift**: [https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws](https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws)  
+  *Production reference implementation demonstrating OpenShift `restricted-v2` SCC deployment, AWS NLB with PROXY protocol v2, split-horizon FQDN routing, and zero-sidecar `BackendTLSPolicy`.*
+
+---
+
 [🏠 Home / README](../README.md) | [Architecture](ARCHITECTURE.md) | [FQDN Routing](FQDN_ROUTING.md) | [Extended Solutions](EXTENDED_SOLUTIONS.md) | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | **Gateway API without Traefik** | [Gateway API with Traefik](GATEWAY_API_WITH_TRAEFIK.md) | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
+
 
