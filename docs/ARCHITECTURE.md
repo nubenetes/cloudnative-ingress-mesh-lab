@@ -1,4 +1,4 @@
-[🏠 Home / README](../README.md) | **Architecture Deep Dive** | [FQDN Routing](FQDN_ROUTING.md) | [Extended Solutions](EXTENDED_SOLUTIONS.md) | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
+[🏠 Home / README](../README.md) | **Architecture Deep Dive** | [FQDN Routing](FQDN_ROUTING.md) | [Gateway API without Traefik](GATEWAY_API_WITHOUT_TRAEFIK.md) | [Extended Solutions](EXTENDED_SOLUTIONS.md) | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | [Lab 1: Cilium](LAB_CILIUM.md) | [Lab 2: Istio Ambient](LAB_ISTIO_AMBIENT.md) | [Lab 3: Traefik Edge](LAB_TRAEFIK_EDGE.md)
 
 ---
 
@@ -428,4 +428,4 @@ FQDN-based routing behaves fundamentally differently across edge gateways and se
 
 ---
 
-[🏠 Home / Overview](../README.md) | [FQDN-Driven Routing](FQDN_ROUTING.md) | [Extended Solutions](EXTENDED_SOLUTIONS.md) | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | ➡️ Next: [Lab 1: Cilium](LAB_CILIUM.md)
+[🏠 Home / Overview](../README.md) | [FQDN-Driven Routing](FQDN_ROUTING.md) | [Gateway API without Traefik](GATEWAY_API_WITHOUT_TRAEFIK.md) | [Extended Solutions](EXTENDED_SOLUTIONS.md) | [Scenarios & Recommendations](SCENARIOS_AND_RECOMMENDATIONS.md) | ➡️ Next: [Lab 1: Cilium](LAB_CILIUM.md)
