@@ -69,6 +69,7 @@
   - [8.5 Extended Alternatives: Linkerd, Envoy Gateway, Kong & Kuma](#85-extended-alternatives-linkerd-envoy-gateway-kong--kuma)
   - [8.6 Red Hat OpenShift Compliance & Platform Hardening](#86-red-hat-openshift-compliance--platform-hardening)
   - [8.7 Industry Standards for Zero-Trust & Identity](#87-industry-standards-for-zero-trust--identity)
+- [9. Companion Projects & Ecosystem Cross-References](#9-companion-projects--ecosystem-cross-references)
 
 ---
 
@@ -182,8 +183,10 @@ FQDN-based routing behaves fundamentally differently across edge gateways and se
 - **East-West**: With **Node-Level DNS Capture** (`ISTIO_META_DNS_CAPTURE=true`), the node `ztunnel` intercepts outbound DNS requests locally without requiring pod sidecars. External or non-mesh internal FQDNs are declared via `ServiceEntry` resources (`resolution: DNS`). Outbound requests to `api.partner.internal` receive a deterministic virtual IP from ztunnel, which routes the request to an Envoy `waypoint` proxy where mTLS, header matching, and canary splitting are enforced before egress.
 
 #### 3. Traefik Proxy v3 (Edge Gateway & Hairpin Intermediary)
-- **North-South**: Traefik natively matches FQDNs using Gateway API `Gateway` listeners with `hostname: "*.internal.corp"` and `HTTPRoute` rules, or Traefik `IngressRoute` with `Host()` and `HostSNI()` rule matchers.
-- **East-West (Non-Mesh Hairpin)**: In architectures without a service mesh, internal microservices call each other via shared FQDNs (e.g., `https://backend.internal.corp`). CoreDNS rewrites this domain (or forwards via an unprivileged secondary CoreDNS on OpenShift 4.20+) to Traefik's internal ClusterIP. Traefik intercepts the call, applies rate-limiting, auth, and circuit-breaker Middlewares, and forwards to the target service. This provides centralized L7 traffic control without mesh complexity.
+- **North-South**: Traefik natively matches FQDNs using Gateway API `Gateway` listeners with `hostname: "*.internal.corp"` and `HTTPRoute` rules, or Traefik `IngressRoute` with `Host()` and `HostSNI()` rule matchers. External traffic resolves via public/corporate DNS (Route 53, Infoblox) straight to the Edge Load Balancer, requiring **0% CoreDNS involvement**.
+- **East-West (Non-Mesh Hairpin & Split-Horizon)**: In architectures without a service mesh, internal microservices call each other via shared FQDNs (e.g., `backend.internal.corp` or `service-b.apps.cluster.local`). Two proven enterprise patterns exist:
+  - *Pattern A (Transparent In-Cluster Interception)*: CoreDNS rewrites the domain or forwards via an unprivileged secondary CoreDNS (`infra-dns`) on OpenShift 4.20+ to Traefik's internal ClusterIP. Workload pods call `http://backend.internal.corp` directly without custom headers.
+  - *Pattern B (Split-Horizon Ingress via Traefik Service)*: Workload pods call Traefik's native cluster Service URL (`https://traefik.traefik-system.svc.cluster.local:8443`) with `-H "Host: service-b.apps.cluster.local"`. CoreDNS resolves `svc.cluster.local` natively out-of-the-box with **zero DNS forwarders and zero DNS operator patches**, while Traefik handles mTLS (`RequireAndVerifyClientCert`) and L7 routing at the proxy boundary. This is demonstrated in our companion project [**traefik-fqdn-management-poc-openshift-aws**](https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws).
 
 #### 4. Linkerd (Rust Micro-Proxy Sidecars)
 - **North-South**: Linkerd does not provide a native Ingress controller; it delegates North-South FQDN termination to third-party Gateway API ingress controllers (such as Envoy Gateway or Traefik), which inject traffic into Linkerd-meshed services.
@@ -457,3 +460,29 @@ The architectural analyses, comparative metrics, kernel configurations, and YAML
   *Authoritative federal guidelines for continuous cryptographic identity verification, micro-segmentation, and policy enforcement points.*
 - **SPIFFE / SPIRE Workload Identity Specification**: [https://spiffe.io/](https://spiffe.io/)  
   *The CNCF standard governing cryptographic software identity issuance (`spiffe://...`) leveraged by Istio Ambient and Cilium mutual authentication.*
+
+---
+
+## 9. Companion Projects & Ecosystem Cross-References
+
+Within the **nubenetes** cloud-native engineering ecosystem, this multi-engine laboratory works hand-in-hand with specialized reference implementations:
+
+### 🔗 Companion Deep-Dive: Traefik Advanced FQDN Management on Red Hat OpenShift & AWS ROSA
+👉 [**github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws**](https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws)
+
+#### Why These Two Repositories Are Closely Related:
+* **The Shared Architectural Problem**: Both repositories address enterprise FQDN routing on **Red Hat OpenShift (OCP 4.14 – 4.20+)**, where the **Cluster DNS Operator strictly locks down the cluster Corefile** (`dns-default`), preventing developers from performing in-place DNS rewrites.
+* **Dual-Plane (North-South & East-West) Scope**: Both projects demonstrate how to eliminate default `.apps.<clustername>` dependency on North-South ingress, while establishing secure, auditable, mutual TLS-authenticated East-West communication inside the cluster.
+* **Modern Standards Alignment**: Both projects implement concurrent dual-stack ingress: **Traefik Proxy v3 CRDs** (`IngressRoute`, `TLSOption`, `Middleware`) alongside the official **CNCF Kubernetes Gateway API v1** (`GatewayClass`, `Gateway`, `HTTPRoute`, `BackendTLSPolicy`).
+
+#### Core Architectural Differences & When to Use Which:
+
+| Evaluation Dimension | `cloudnative-ingress-mesh-lab` (This Repository) | `traefik-fqdn-management-poc-openshift-aws` (Companion Repo) |
+| :--- | :--- | :--- |
+| **Architectural Focus** | **Multi-Engine Comparative Evaluation**: Cilium eBPF vs. Istio Ambient vs. Traefik v3 vs. Linkerd vs. Envoy Gateway vs. Kong/Kuma. | **Production Implementation**: Deep-dive on Red Hat OpenShift (ROSA v4.14+) on AWS with Traefik Proxy v3 and Gateway API. |
+| **East-West DNS Strategy** | **Transparent In-Cluster Interception**: Pods call `http://backend.internal.corp` directly; name resolution is handled via secondary in-cluster CoreDNS forwarder (`infra-dns`), pod `hostAliases`, or in-kernel eBPF/ztunnel interception. | **Split-Horizon Ingress Horizon**: Pods call Traefik's native cluster Service URL (`https://traefik.traefik-system.svc.cluster.local:8443`) with `-H "Host: service-b.apps.cluster.local"`, or resolve via AWS Route 53 Private Zones. |
+| **OpenShift DNS Operator Impact** | Evaluates Pattern A (patching `dns.operator.openshift.io/default` `spec.servers`) and Pattern B (`hostAliases`). | **Zero (0%) DNS Operator Configuration**: Avoids both secondary forwarders and pod `hostAliases` by utilizing native `svc.cluster.local` resolution. |
+| **Target Infrastructure** | **Distribution-Agnostic**: Identical manifests for Bare-Metal, Kind, OpenShift, EKS, AKS, GKE, and RKE2. | **AWS ROSA Optimized**: Leverages AWS Network Load Balancers (NLB) with PROXY protocol v2, ExternalDNS with Route 53, and AWS VPC networking. |
+| **Inter-Service Security** | Compares in-kernel eBPF socket maps, Istio Ambient ztunnel HBONE mTLS, and Traefik reverse-proxying. | Focuses on mesh-less Traefik mTLS (`TLSOption` with `RequireAndVerifyClientCert`), Gateway API `BackendTLSPolicy`, and OVN CIDR allowlists. |
+| **Detailed Comparison** | See [`docs/FQDN_ROUTING.md#214-cross-repository-deep-dive`](docs/FQDN_ROUTING.md#214-cross-repository-deep-dive-how-traefik-fqdn-management-poc-openshift-aws-bypasses-coredns-forwarders--pod-hostaliases). | See [`COMPARATIVE_MATRIX.md`](https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws/blob/main/COMPARATIVE_MATRIX.md). |
+

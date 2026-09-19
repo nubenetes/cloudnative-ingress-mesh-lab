@@ -21,6 +21,7 @@ This document provides definitive configurations across **Red Hat OpenShift (4.1
   - [2.1.1 Architectural Reality Check: Do Traefik IngressRoutes & Middlewares Eliminate CoreDNS?](#211-architectural-reality-check-do-traefik-ingressroutes--middlewares-eliminate-coredns)
   - [2.1.2 Custom FQDNs Lacking OpenShift's Default `*.apps.<clustername>`](#212-custom-fqdns-lacking-openshifts-default-appsclustername)
   - [2.1.3 The 4 Operational Paths for OpenShift 4.20+ (Comparison & Decision Guide)](#213-the-4-operational-paths-for-openshift-420-comparison--decision-guide)
+  - [2.1.4 Cross-Repository Deep-Dive: How `traefik-fqdn-management-poc-openshift-aws` Bypasses CoreDNS Forwarders & Pod `hostAliases`](#214-cross-repository-deep-dive-how-traefik-fqdn-management-poc-openshift-aws-bypasses-coredns-forwarders--pod-hostaliases)
   - [2.2 OpenShift Pattern A: DNS Operator Zone Forwarding to In-Cluster Resolver](#22-openshift-pattern-a-dns-operator-zone-forwarding-to-in-cluster-resolver)
   - [2.3 OpenShift Pattern B: Pod-Level `hostAliases` & `dnsConfig` (Unprivileged)](#23-openshift-pattern-b-pod-level-hostaliases--dnsconfig-unprivileged)
   - [2.4 Vanilla Kubernetes, Kind & SUSE RKE2: CoreDNS `rewrite` Plugin](#24-vanilla-kubernetes-kind--suse-rke2-coredns-rewrite-plugin)
@@ -197,6 +198,97 @@ To route custom FQDNs lacking `.apps.<clustername>` on OpenShift without violati
 | **2. Pod-Level `hostAliases`** | **0% (Zero)** | **None** (Standard developer permissions) | Per-Pod / Per-Deployment | Moderate (Must maintain deployment manifests) | Fast testing, non-admin environments, or isolated microservice pairs. |
 | **3. In-Cluster Resolver Forwarding (Pattern A)** | **Zone Forward only** (via `spec.servers`) | **Yes** (`cluster-admin` to patch DNS Operator) | Cluster-wide | Low (Deploys lightweight secondary CoreDNS once) | Enterprise internal FQDNs that don't exist in corporate upstream DNS. |
 | **4. Mesh-Native Capture (Cilium / Istio)** | **0% (Zero, Bypassed)** | **None** on DNS (Handled by Mesh CNI/ztunnel) | Mesh-wide | Very Low (Declarative `ServiceEntry` / eBPF) | Cilium eBPF or Istio Ambient is already active in the cluster. |
+
+---
+
+### 2.1.4 Cross-Repository Deep-Dive: How `traefik-fqdn-management-poc-openshift-aws` Bypasses CoreDNS Forwarders & Pod `hostAliases`
+
+In the companion reference architecture:
+👉 [**github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws**](https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws)
+
+the team implements a production-grade deployment on **Red Hat OpenShift (ROSA v4.14+) on AWS** demonstrating how Traefik Proxy v3 and the Kubernetes Gateway API manage dual-plane FQDNs **without** deploying a secondary in-cluster CoreDNS forwarder and **without** requiring application developers to inject `hostAliases` into their pods.
+
+#### 1. Why the Two Repositories Are Closely Related
+Both projects solve the exact same foundational challenge in cloud-native platform engineering:
+* **The OpenShift DNS Immutability Barrier**: In OpenShift 4.14–4.20+, the Cluster DNS Operator continuously reconciles `dns-default` in `openshift-dns`, overwriting manual Corefile modifications within seconds.
+* **Dual-Plane Transit**: Both address external **North-South** ingress (custom FQDNs bypassing default `.apps.<clustername>`) and internal **East-West** microservice-to-microservice transit.
+* **Modern Ingress Standards**: Both implement concurrent dual-stack ingress: Traefik v3 Custom Resource Definitions (`IngressRoute`, `Middleware`, `TLSOption`) and official CNCF Kubernetes Gateway API v1 (`GatewayClass`, `Gateway`, `HTTPRoute`, `BackendTLSPolicy`).
+
+#### 2. The Core Differences in Technical Approach
+While they solve the same problem, they adopt two distinct architectural philosophies for East-West name resolution:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│  APPROACH A: Transparent In-Cluster DNS Interception (cloudnative-ingress-mesh-lab)   │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│  Client Pod Syntax: `curl http://backend.internal.corp/api`                            │
+│  • Client is completely agnostic to gateway addresses; calls business FQDN directly.   │
+│  • L3/L4 Resolution: Handled by OpenShift DNS Operator zone forwarding (`spec.servers`)│
+│    pointing to an unprivileged in-cluster CoreDNS resolver (`infra-dns`), or kernel    │
+│    eBPF socket interception (Cilium), or node-level capture (Istio Ambient ztunnel).   │
+│  • Target Environment: Multi-distribution (OpenShift, EKS, AKS, GKE, Vanilla/BareMetal)│
+└────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│  APPROACH B: Split-Horizon Ingress via Traefik Service (traefik-fqdn-management-poc)   │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│  Client Pod Syntax: `curl -H "Host: service-b.apps.cluster.local"                      │
+│                           https://traefik.traefik-system.svc.cluster.local:8443`       │
+│  • Client addresses the gateway's native Kubernetes Service FQDN (`*.svc.cluster.local`)│
+│  • L3/L4 Resolution: Resolved 100% natively by OpenShift CoreDNS out-of-the-box!       │
+│  • L7 Policy: Traefik inspects the HTTP `Host` header, validates client mTLS certs     │
+│    (`RequireAndVerifyClientCert`), checks OVN-Kubernetes CIDR allowlists, and routes.  │
+│  • Target Environment: Cloud-native AWS ROSA / EKS leveraging NLBs & Route 53.         │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 3. How `traefik-fqdn-management-poc-openshift-aws` Bypasses DNS Forwarders
+That repository uses three complementary architectural mechanisms:
+
+##### Mechanism 1: The Gateway Ingress Horizon Pattern (Verification Command in README.md)
+In [`traefik-fqdn-management-poc-openshift-aws/README.md#validation--verification-testing`](https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws#4-validating-east-west-mutual-tls-mtls-enforcement), the East-West validation test is executed as:
+
+```bash
+CLIENT_POD=$(oc get pod -l app=service-a -n traefik-crd-poc -o jsonpath='{.items[0].metadata.name}')
+
+# Client calls Traefik's native cluster Service name with internal FQDN Host header
+oc exec -n traefik-crd-poc "${CLIENT_POD}" -- \
+  curl -k -s --cert /var/run/secrets/tls/client.crt --key /var/run/secrets/tls/client.key \
+  -H "Host: service-b.apps.cluster.local" \
+  "https://traefik-loadbalancer.traefik-system.svc.cluster.local:8443/api/v1/internal"
+```
+
+* **Why No Forwarder Is Needed**: Because the socket target is `traefik-loadbalancer.traefik-system.svc.cluster.local`, OpenShift's standard CoreDNS resolves it immediately without any operator configuration.
+* **How Traefik Handles the FQDN**: Traefik's internal listener on port `8443` receives the TCP connection, terminates mTLS via `TLSOption` (`strict-mtls-option`), matches the `Host(`service-b.apps.cluster.local`)` rule on the `IngressRoute` (Solution A) or `HTTPRoute` (Solution B), checks the OVN-Kubernetes pod CIDR (`10.128.0.0/14`) via `middleware-internal-east-west-allowlist`, and proxies traffic to `service-b:8443`.
+
+##### Mechanism 2: Middleware-Based Host Mutation (`middleware-forwarded-host-mutation`)
+In `manifests/solution-a-traefik-crds/02-middleware-security.yaml`, Traefik injects:
+```yaml
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"
+      X-Enterprise-Route-Type: "Solution-A-Traefik-CRD"
+```
+When consuming microservices call `https://service-b.traefik-crd-poc.svc.cluster.local:8443`, CoreDNS resolves it natively. Traefik's middleware mutates the `Host` header to `api.company.com` and injects `X-Forwarded-Host: api.company.com`, satisfying upstream JWT audience verification and CORS requirements transparently.
+
+##### Mechanism 3: Cloud VPC Private Hosted Zones (AWS Route 53)
+In AWS ROSA, private VPC hosted zones (e.g., `service-b.internal.company.com`) are resolved by the AWS VPC Resolver (`AmazonProvidedDNS` at `169.254.169.253` or VPC CIDR + 2). Because OpenShift CoreDNS by default forwards non-cluster queries (`.`) to the node's `/etc/resolv.conf`, the query resolves natively to Traefik's internal NLB VIP without touching OpenShift's DNS Operator.
+
+#### 4. Architectural Comparison: Which Approach to Choose?
+
+| Architectural Dimension | [`cloudnative-ingress-mesh-lab`](../README.md) (This Repo) | [`traefik-fqdn-management-poc-openshift-aws`](https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws) |
+| :--- | :--- | :--- |
+| **Primary Scope** | Multi-Engine Comparative Lab (Traefik, Cilium, Istio Ambient, Linkerd, Envoy, Kong) | Production Implementation on Red Hat OpenShift on AWS (ROSA) |
+| **East-West DNS Strategy** | **Transparent In-Cluster Resolution**: Zone forwarder (`infra-dns`), pod `hostAliases`, or in-kernel eBPF / ztunnel capture | **Split-Horizon Ingress**: Targeting Traefik's `svc.cluster.local` + `Host` header, or AWS Route 53 Private Zones |
+| **Developer Calling Format** | Standard URL: `http://backend.internal.corp/api` (no headers needed) | Explicit Horizon: `https://traefik.svc.cluster.local:8443` with `-H "Host: ..."` |
+| **DNS Operator Configuration** | Required for Pattern A (patch `dns.operator.openshift.io/default` `spec.servers`) | **None** (Zero OpenShift DNS Operator interaction) |
+| **Cluster Admin Privileges** | Required for DNS Operator patch; none for `hostAliases` or Ambient mesh | **None** on OpenShift (all manifests deploy under tenant namespaces) |
+| **Cloud Provider Dependency** | **Cloud-Agnostic**: Identical behavior on Bare-Metal, Kind, OpenShift, EKS, AKS, GKE | **AWS-Native**: Optimized for AWS NLB, ExternalDNS Route 53, and ROSA VPC networking |
+| **East-West mTLS Enforcement** | In-kernel eBPF (Cilium), ztunnel HBONE (Istio Ambient), or Traefik hairpin | Traefik `TLSOption` (`RequireAndVerifyClientCert`) & Gateway API `BackendTLSPolicy` (v1alpha3) |
+| **Recommended Production Fit** | When microservices cannot change their calling syntax and require transparent DNS interception across any cloud | When running OpenShift on AWS and platform teams want zero DNS forwarders, zero DNS operator patches, and zero sidecars |
+
+---
 
 ### 2.2 OpenShift Pattern A: DNS Operator Zone Forwarding to In-Cluster Resolver (Recommended)
 
@@ -683,6 +775,8 @@ spec:
   *Architecture guide for in-kernel DNS proxy inspection, pattern matching, and dynamic IP set synchronization.*
 - **Istio Traffic Management: DNS Proxying Architecture**: [https://istio.io/latest/docs/ops/configuration/traffic-management/dns-proxy/](https://istio.io/latest/docs/ops/configuration/traffic-management/dns-proxy/)  
   *Official reference on `ISTIO_META_DNS_CAPTURE`, sidecarless node-level resolution, and `ServiceEntry` virtual VIP mapping.*
+- **Companion Architecture Repository**: [https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws](https://github.com/nubenetes/traefik-fqdn-management-poc-openshift-aws)  
+  *Production-grade reference implementation demonstrating Traefik v3 and Gateway API on Red Hat OpenShift (ROSA) on AWS with zero CoreDNS modifications, split-horizon ingress, and sidecarless mTLS.*
 
 ---
 
