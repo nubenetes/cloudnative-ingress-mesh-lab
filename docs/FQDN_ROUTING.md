@@ -76,19 +76,22 @@ In OpenShift, cluster DNS is managed by the **Cluster DNS Operator (`dns.operato
 A frequent misconception in cloud-native architecture is:
 > *"If I configure a Traefik v3 `IngressRoute` matching `Host(\`backend.internal.corp\`)` and attach Traefik Middlewares, I don't need to add entries to CoreDNS or deploy a secondary resolver in OpenShift 4.20+."*
 
-**The Truth: It depends strictly on transit direction (North-South vs. East<details>
+**The Truth: It depends strictly on transit direction (North-South vs. East-West).**
+
+<details>
 <summary><b>Diagram 2.1: North-South vs. East-West DNS Resolution Flow (Click to Expand / Collapse)</b></summary>
 
 ```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 450, "nodeSpacing": 45, "rankSpacing": 45}}}%%
 flowchart TD
-    subgraph NorthSouth ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NORTH-SOUTH TRANSIT (External Client -> Cluster Ingress)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
-        ExtClient["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>External / Corporate Client</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Initiates HTTPS Request&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Target: backend.internal.corp&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph NorthSouth ["NORTH-SOUTH TRANSIT (External Client -> Cluster Ingress)"]
+        ExtClient["<b>External / Corporate Client</b><br/>• Initiates HTTPS Request<br/>• Target: backend.internal.corp"]
         
-        ExtDNS["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Corporate / Public DNS</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Infoblox / Route 53 / BIND&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Resolves to Ingress VIP / NLB&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 🎯 0% CoreDNS Query!&nbsp;&nbsp;&nbsp;&nbsp;"]
+        ExtDNS["<b>Corporate / Public DNS (External)</b><br/>• Infoblox / AWS Route 53 / BIND<br/>• Resolves to Ingress VIP / Cloud NLB<br/>• 🎯 0% CoreDNS Query (Zero Cluster Load)"]
         
-        IngressVIP["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>OpenShift Ingress / Traefik Gateway</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Terminates TLS Handshake&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Inspects HTTP Host Header&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Matches IngressRoute Rule&nbsp;&nbsp;&nbsp;&nbsp;"]
+        IngressVIP["<b>OpenShift Ingress / Traefik Gateway</b><br/>• Terminates TLS 1.3 Handshake<br/>• Inspects HTTP Host Header<br/>• Matches IngressRoute / HTTPRoute Rule"]
         
-        NSBackend["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Target Microservice Pods</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Receives Forwarded L7 Traffic&nbsp;&nbsp;&nbsp;&nbsp;"]
+        NSBackend["<b>Target Microservice Pods</b><br/>• Receives Forwarded Layer 7 Traffic<br/>• Standard Ingress Routing"]
 
         ExtClient -->|"1. Query FQDN"| ExtDNS
         ExtDNS -->|"2. Returns Ingress VIP"| ExtClient
@@ -98,18 +101,18 @@ flowchart TD
 
     NorthSouth ~~~ EastWest
 
-    subgraph EastWest ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;EAST-WEST TRANSIT (Pod A -> Pod B inside Cluster)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
-        PodA["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Client Pod A in Cluster</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• curl http://backend.internal.corp&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• glibc getaddrinfo consults&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/etc/resolv.conf (CoreDNS)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph EastWest ["EAST-WEST TRANSIT (Pod A -> Pod B inside Cluster)"]
+        PodA["<b>Client Pod A in Cluster</b><br/>• curl http://backend.internal.corp<br/>• glibc getaddrinfo consults /etc/resolv.conf"]
         
-        ClusterDNS{"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>OpenShift Cluster DNS</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;Is backend.internal.corp&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;known to CoreDNS / Forwarder?&nbsp;&nbsp;&nbsp;&nbsp;"}
+        ClusterDNS{{"<b>OpenShift Cluster DNS (CoreDNS)</b><br/>Is backend.internal.corp<br/>known to CoreDNS or Forwarder?"}}
         
-        NXDomain["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>NXDOMAIN Error Response</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Kernel aborts socket setup&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• curl: (6) Could not resolve host&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;🚨 Traefik Middlewares NEVER run!&nbsp;&nbsp;&nbsp;&nbsp;"]
+        NXDomain["<b>NXDOMAIN Error Response</b><br/>• Linux kernel aborts socket connection<br/>• curl: (6) Could not resolve host<br/>• 🚨 Traefik Middlewares NEVER execute!"]
         
-        ResolvedVIP["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>A Record: Traefik VIP</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Via Forwarder, hostAliases,&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;or Mesh-Native Capture&nbsp;&nbsp;&nbsp;&nbsp;"]
+        ResolvedVIP["<b>A Record Resolved: Traefik VIP</b><br/>• Resolved via Forwarder, hostAliases,<br/>  or Mesh-Native DNS Capture"]
         
-        TraefikEW["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Traefik Router / Middlewares</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Matches IngressRoute Host Rule&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Executes RateLimit & Auth&nbsp;&nbsp;&nbsp;&nbsp;"]
+        TraefikEW["<b>Traefik Router / Middlewares</b><br/>• Matches IngressRoute Host Rule<br/>• Executes RateLimit, CircuitBreaker & Auth"]
         
-        EWBackend["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Target Service Pod B</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Receives Governed L7 Traffic&nbsp;&nbsp;&nbsp;&nbsp;"]
+        EWBackend["<b>Target Service Pod B</b><br/>• Receives Governed L7 Traffic<br/>• Successfully Protected"]
 
         PodA -->|"1. Local DNS Lookup"| ClusterDNS
         ClusterDNS -->|"NO: Unknown Host"| NXDomain
@@ -119,14 +122,16 @@ flowchart TD
         TraefikEW -->|"4. Proxies Request"| EWBackend
     end
 
-    classDef client fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
-    classDef dns fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff;
-    classDef router fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff;
-    classDef backend fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
-    classDef error fill:#c92a2a,stroke:#861919,stroke-width:2px,color:#fff;
+    classDef client fill:#495057,stroke:#212529,stroke-width:2px,color:#fff,min-width:300px;
+    classDef dns fill:#1864ab,stroke:#0b427a,stroke-width:2px,color:#fff,min-width:300px;
+    classDef router fill:#d9480f,stroke:#a63207,stroke-width:2px,color:#fff,min-width:300px;
+    classDef backend fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff,min-width:300px;
+    classDef error fill:#c92a2a,stroke:#861919,stroke-width:2px,color:#fff,min-width:300px;
+    classDef decision fill:#0b427a,stroke:#1864ab,stroke-width:2px,color:#fff,min-width:340px;
 
     class ExtClient,PodA client;
-    class ExtDNS,ClusterDNS,ResolvedVIP dns;
+    class ExtDNS,ResolvedVIP dns;
+    class ClusterDNS decision;
     class IngressVIP,TraefikEW router;
     class NSBackend,EWBackend backend;
     class NXDomain error;
