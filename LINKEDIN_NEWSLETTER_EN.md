@@ -306,15 +306,17 @@ For platform teams ready to migrate from legacy Ingress or OpenShift Routes to m
 
 ## 🎬 Companion Video Masterclasses (YouTube Channel @nubenetes)
 
-For platform engineers who prefer deep-dive video walkthroughs, the architectural paradigms, lab implementations, and benchmarks analyzed in this newsletter are covered in detail across 4 dedicated video masterclasses on [**youtube.com/@nubenetes**](https://youtube.com/@nubenetes):
+For platform engineers who prefer deep-dive video walkthroughs, the architectural paradigms, lab implementations, and benchmarks analyzed in this newsletter are covered in detail across 4 dedicated video masterclasses on [**youtube.com/@nubenetes**](https://youtube.com/@nubenetes).
 
-1. 🎙️ [**Unified FQDN Routing with Traefik alternatives**](https://www.youtube.com/watch?v=xuDtcUZYeHU) *(8m 14s)*  
+> 💡 **Language & Audio Settings Note:** These videos were produced with **original Spanish audio** and feature **YouTube Multilingual Audio Tracks** / auto-dubbing. You can select your preferred listening language and subtitles directly in the YouTube player via **Settings (⚙️) ➔ Audio track**.
+
+1. 🎙️ [**Unified FQDN Routing with Traefik alternatives**](https://www.youtube.com/watch?v=xuDtcUZYeHU) *(8m 14s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
    *Core Topic:* Achieving Unified FQDN routing for East-West and North-South traffic using Traefik alternatives (in-kernel eBPF Cilium vs. Istio Ambient mode) with zero pod sidecar tax, resolving the OpenShift CoreDNS immutability barrier, and comparing L4 TCP socket establishment with L7 HTTP proxying.
-2. 🎙️ [**Gateway API y FQDNs**](https://www.youtube.com/watch?v=vay32AcPJ9Q) *(8m 44s)*  
+2. 🎙️ [**Gateway API y FQDNs**](https://www.youtube.com/watch?v=vay32AcPJ9Q) *(8m 44s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
    *Core Topic:* The 2026 evolution of the Kubernetes Gateway API standard (`gateway.networking.k8s.io/v1`), dual-plane FQDN resolution (external ingress & internal microservices), and eliminating code-level conditionals across multi-cloud distros (EKS, AKS, GKE, ROSA).
-3. 🎯 [**FQDN unificado en OpenShift para north-south y east-west con Traefik y Gateway API**](https://www.youtube.com/watch?v=zUq_CYC7vM8) *(9m 25s)*  
+3. 🎯 [**FQDN unificado en OpenShift para north-south y east-west con Traefik y Gateway API**](https://www.youtube.com/watch?v=zUq_CYC7vM8) *(9m 25s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
    *Core Topic:* Solving the OpenShift CoreDNS lockdown with Traefik Proxy v3 and Kubernetes Gateway API. Evaluates Pattern A (Transparent Interception via OpenShift DNS Operator forwarding) vs. Pattern B (Split-Horizon Ingress via AWS Route 53).
-4. 🚀 [**OpenShift con FQDN en north-south y east-west: Traefik vs Gateway API**](https://www.youtube.com/watch?v=kIEqhHRf-Ks) *(9m 06s)*  
+4. 🚀 [**OpenShift con FQDN en north-south y east-west: Traefik vs Gateway API**](https://www.youtube.com/watch?v=kIEqhHRf-Ks) *(9m 06s • Original: Spanish 🇪🇸 • Multilingual Audio ⚙️)*  
    *Core Topic:* Complete architectural walkthrough on Red Hat OpenShift on AWS (ROSA): Traefik CRDs (`IngressRoute`) vs. Gateway API (`HTTPRoute`), AWS NLB integration with PROXY Protocol v2, strict mTLS (TLS 1.3), and `restricted-v2` SCC compliance.
 
 ---
