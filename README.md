@@ -30,6 +30,7 @@
   - [3.2 Envoy Gateway: The CNCF Gateway API Reference Controller](#32-envoy-gateway-the-cncf-gateway-api-reference-controller)
   - [3.3 Kong Gateway & Kuma: Enterprise API Management vs. Hybrid Mesh](#33-kong-gateway--kuma-enterprise-api-management-vs-hybrid-mesh)
   - [3.4 Comprehensive 6-Way Comparative Evaluation Matrix](#34-comprehensive-6-way-comparative-evaluation-matrix)
+  - [3.5 Deep-Dive: North-South & East-West FQDN Routing Comparison](#35-deep-dive-north-south--east-west-fqdn-routing-comparison)
 - [4. Platform Decision Matrix & Ranked Recommendations](#4-platform-decision-matrix--ranked-recommendations)
   - [Archetype 1: Ultra-Low Latency & Telco/Fintech](#archetype-1-high-performance-ultra-low-latency--telcofintech-workloads)
   - [Archetype 2: Enterprise Multi-Tenant Zero-Trust](#archetype-2-enterprise-multi-tenant-zero-trust-cloud-platform-eg-openshift-on-awsbare-metal)
@@ -121,11 +122,45 @@ While the three hands-on laboratories in this repository evaluate the leading da
 | **Data Plane Engine** | eBPF bytecode + Node Envoy | Rust `ztunnel` + Envoy Waypoint | Go Core multiplexer | Rust `linkerd2-proxy` | Envoy Proxy (C++) | OpenResty (Nginx/Lua) + Go |
 | **Mesh Topology** | Host/Node-level (Sidecarless) | Node L4 + Namespace L7 | None (North-South Edge) | Pod-scoped (Sidecar) | None (North-South Edge) | Optional Kuma sidecars |
 | **Gateway API Conformance** | v1 GA Native | v1 GA Native (Waypoint binding) | v1 GA Native | v1 GA (East-West routing) | Official Reference Standard | v1 Partial / CRD-heavy |
+| **North-South FQDN Routing** | Gateway listeners with `hostnames` + `HTTPRoute` matching; SNI via `TLSRoute` | Gateway (`istio`) + `HTTPRoute` host matching; SNI routing & TLS termination | Gateway listeners (`*.corp.internal`) + `HTTPRoute` / `IngressRoute` host rules | Relies on external Ingress (Envoy GW / Traefik) targeting mesh Services | Native Gateway API: exact/wildcard `hostnames`, SNI routing in `TLSRoute` | `HTTPRoute` host matching + `KongIngress` / `Ingress` regex host rules |
+| **East-West FQDN Routing** | Direct pod-to-pod FQDN calls; in-kernel DNS proxy maps IP to name via eBPF | Synthetic VIPs via `ServiceEntry` + `HTTPRoute` binding on Waypoint proxies | Hairpin Ingress via CoreDNS forwarder/rewrite; Middlewares applied at proxy | `HTTPRoute` on Service; proxy matches `Host` / `:authority` header | Internal Gateway VIP via CoreDNS rewrite; `BackendTrafficPolicy` applied | Standalone: Hairpin via CoreDNS; Mesh: Kuma embedded DNS intercepts `*.mesh` |
+| **DNS Interception Vector** | In-kernel eBPF socket hook intercepting port 53; dynamic sockmap cache | Node-level `ztunnel` DNS capture (`ISTIO_META_DNS_CAPTURE`) without sidecars | Standard CoreDNS rewrite / secondary DNS forwarder (OpenShift 4.20+) | Pod-level iptables redirecting port 53 or standard Kubernetes CoreDNS | Standard CoreDNS resolving internal FQDN to Envoy Gateway VIP | Kuma sidecar local DNS server on port 15053 or CoreDNS hairpin |
+| **External FQDN Egress Security** | `toFQDNs` in `CiliumNetworkPolicy` dynamically whitelisting resolved IPs | `ServiceEntry` (DNS) + `AuthorizationPolicy` / Egress Gateway | ForwardAuth or custom Middleware proxying to external FQDNs | Egress traffic policy; opaque TLS bypass or external egress proxy | `BackendTrafficPolicy` with external endpoints or DNS resolution | External Service entities + `KongPlugin` egress filters |
 | **Pod Workload Overhead** | **0 MB** (Zero sidecar) | **0 MB** (Zero sidecar) | 0 MB (Edge Proxy) | **~15–30 MB** (Rust proxy) | 0 MB (Edge Proxy) | ~150–300 MB per replica |
 | **CVE Blast Radius Containment** | Shared Node Envoy | Split: Node L4 / Namespace L7 | Edge Perimeter | **Strict Pod Isolation** | Edge Perimeter | Edge Perimeter |
 | **mTLS & Identity Backbone** | SPIRE / Node WireGuard | **HBONE / SPIFFE X.509** | Edge TLS Termination | Pod-to-Pod mTLS (SPIFFE) | Edge TLS / Backend mTLS | Edge TLS / Upstream mTLS |
 | **Red Hat OpenShift Fit** | Requires CNI/SELinux bypass | **First-Class (OSSM 3.x Native)** | High (`restricted-v2` SCC) | Requires custom SCC & CNI | High (`anyuid` SCC) | Certified Operator Catalog |
 | **Licensing Governance** | Apache 2.0 (CNCF Graduated) | Apache 2.0 (CNCF Graduated) | Apache 2.0 / Enterprise | Edge: Apache 2.0 / Stable: Paid | Apache 2.0 (CNCF) | Apache 2.0 / Kong Enterprise |
+
+---
+
+### 3.5 Deep-Dive: North-South & East-West FQDN Routing Comparison
+
+FQDN-based routing behaves fundamentally differently across edge gateways and service meshes:
+
+#### 1. Cilium Service Mesh (In-Kernel eBPF & Envoy)
+- **North-South**: Edge Gateway API `Gateway` listeners match client request SNI (`TLSRoute`) and HTTP `Host` headers (`HTTPRoute`). Envoy handles TLS termination and forwards traffic directly to backend pods via eBPF host routing.
+- **East-West**: Cilium’s standout capability is its **in-kernel eBPF DNS proxy**. When a pod requests `api.partner.internal`, eBPF intercepts the UDP/TCP port 53 packet, inspects the DNS response payload, and dynamically populates kernel ipsets. The `toFQDNs` egress policy allows connections strictly to the currently resolved IPs, preventing DNS spoofing and eliminating static IP dependencies.
+
+#### 2. Istio Ambient Mesh (ztunnel & Waypoint)
+- **North-South**: An Istio Ingress Gateway (`gatewayClassName: istio`) terminates edge TLS and applies Layer 7 routing via `HTTPRoute` before encapsulating traffic into HBONE (port 15008) toward the destination node’s `ztunnel`.
+- **East-West**: With **Node-Level DNS Capture** (`ISTIO_META_DNS_CAPTURE=true`), the node `ztunnel` intercepts outbound DNS requests locally without requiring pod sidecars. External or non-mesh internal FQDNs are declared via `ServiceEntry` resources (`resolution: DNS`). Outbound requests to `api.partner.internal` receive a deterministic virtual IP from ztunnel, which routes the request to an Envoy `waypoint` proxy where mTLS, header matching, and canary splitting are enforced before egress.
+
+#### 3. Traefik Proxy v3 (Edge Gateway & Hairpin Intermediary)
+- **North-South**: Traefik natively matches FQDNs using Gateway API `Gateway` listeners with `hostname: "*.internal.corp"` and `HTTPRoute` rules, or Traefik `IngressRoute` with `Host()` and `HostSNI()` rule matchers.
+- **East-West (Non-Mesh Hairpin)**: In architectures without a service mesh, internal microservices call each other via shared FQDNs (e.g., `https://backend.internal.corp`). CoreDNS rewrites this domain (or forwards via an unprivileged secondary CoreDNS on OpenShift 4.20+) to Traefik's internal ClusterIP. Traefik intercepts the call, applies rate-limiting, auth, and circuit-breaker Middlewares, and forwards to the target service. This provides centralized L7 traffic control without mesh complexity.
+
+#### 4. Linkerd (Rust Micro-Proxy Sidecars)
+- **North-South**: Linkerd does not provide a native Ingress controller; it delegates North-South FQDN termination to third-party Gateway API ingress controllers (such as Envoy Gateway or Traefik), which inject traffic into Linkerd-meshed services.
+- **East-West**: Linkerd’s `linkerd2-proxy` sidecar captures outbound traffic and matches the HTTP `:authority` or `Host` header against Gateway API `HTTPRoute` objects attached directly to internal `Service` resources. Outbound requests to arbitrary external FQDNs bypass the mesh or pass through an external egress proxy.
+
+#### 5. Envoy Gateway (CNCF Reference Implementation)
+- **North-South**: Direct implementation of the Kubernetes Gateway API specification. Uses standard `hostnames` in `Gateway` and `HTTPRoute` to generate dynamic Envoy VirtualHosts and SNI match filters in xDS v3.
+- **East-West**: Deployed as an internal cluster gateway. Microservices route to internal FQDNs backed by CoreDNS entries pointing to the Envoy Gateway internal IP. Envoy Gateway enforces `BackendTrafficPolicy` (rate limits, retries, circuit breaking) and `SecurityPolicy` (JWT/OIDC) before dispatching to destination pods.
+
+#### 6. Kong Gateway (KIC) & Kuma
+- **North-South**: High-performance domain routing powered by Kong's OpenResty router (radix tree index) matching `HTTPRoute` hostnames or `KongIngress` host rules.
+- **East-West**: In standalone mode, uses CoreDNS hairpinning similar to Traefik. When paired with **Kuma (Kong Mesh)**, outbound DNS is intercepted by Kuma’s embedded DNS server running alongside the Envoy sidecar, resolving custom internal mesh domains (e.g., `service.mesh`) directly to destination sidecars.
 
 ---
 
