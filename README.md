@@ -81,25 +81,25 @@ This laboratory repository provides production-grade reference implementations, 
 
 ```mermaid
 flowchart TD
-    Client(["External Client / Internet"]) -->|TLS 1.3 / HTTPS :443| EdgeGateway["Edge Gateway (Traefik v3 / Gateway API)"]
+    Client(["External Client / Internet"]) -->|"TLS 1.3 / HTTPS :443"| EdgeGateway["Edge Gateway (Traefik v3 / Gateway API)"]
     
     subgraph ClusterEdge ["Cluster Ingress Perimeter"]
-        EdgeGateway -->|Rate Limiting & Auth Filter| MW["Middleware Engine"]
-        MW -->|L7 Routing Decision: HTTPRoute| EdgePod["Edge Proxy Workers"]
+        EdgeGateway -->|"Rate Limiting & Auth Filter"| MW["Middleware Engine"]
+        MW -->|"L7 Routing Decision: HTTPRoute"| EdgePod["Edge Proxy Workers"]
     end
 
     subgraph MeshTransportLayer ["East-West L4 Zero-Trust Fabric (ztunnel / eBPF)"]
-        EdgePod -->|Mutual TLS / HBONE :15008| EncryptLayer["L4 Encapsulation & Identity Verification"]
-        EncryptLayer -->|Cryptographic SPIFFE ID| TargetNode["Target Worker Node"]
+        EdgePod -->|"Mutual TLS / HBONE :15008"| EncryptLayer["L4 Encapsulation & Identity Verification"]
+        EncryptLayer -->|"Cryptographic SPIFFE ID"| TargetNode["Target Worker Node"]
     end
 
     subgraph AppNamespace ["Application Namespace: production-workloads"]
-        TargetNode -->|Selective L7 Enforcement?| Decision{Requires L7 Policy?}
-        Decision -->|Yes: AuthZ / Header Canary| WaypointProxy["Namespace Waypoint Proxy (Envoy)"]
-        Decision -->|No: Pure L4 Wire Speed| FastPath["Direct Kernel Socket Delivery"]
+        TargetNode -->|"Selective L7 Enforcement?"| Decision{"Requires L7 Policy?"}
+        Decision -->|"Yes: AuthZ / Header Canary"| WaypointProxy["Namespace Waypoint Proxy (Envoy)"]
+        Decision -->|"No: Pure L4 Wire Speed"| FastPath["Direct Kernel Socket Delivery"]
         
-        WaypointProxy -->|90% Base Traffic| BackendV1["Backend Service v1"]
-        WaypointProxy -->|10% Canary Split| BackendV2["Backend Service v2 (Canary)"]
+        WaypointProxy -->|"90% Base Traffic"| BackendV1["Backend Service v1"]
+        WaypointProxy -->|"10% Canary Split"| BackendV2["Backend Service v2 (Canary)"]
         FastPath --> BackendV1
     end
 
@@ -122,28 +122,28 @@ flowchart TD
 flowchart LR
     subgraph TraditionalSidecar ["Traditional Envoy Sidecar Model"]
         direction TB
-        App1["App Container"] <-->|Localhost / Loopback| Proxy1["Envoy Sidecar Container"]
-        Proxy1 <-->|Host TCP/IP + veth| Net1["Host Kernel Network Stack"]
-        Net1 <-->|Overlay VXLAN / Wire| Net2["Host Kernel Network Stack"]
-        Net2 <-->|Host TCP/IP + veth| Proxy2["Envoy Sidecar Container"]
-        Proxy2 <-->|Localhost / Loopback| App2["App Container"]
-        Note1["Penalty: 4 Network Hops\nMemory: ~100MB per Pod\nPod restarts on upgrade"]
+        App1["App Container"] <-->|"Localhost / Loopback"| Proxy1["Envoy Sidecar Container"]
+        Proxy1 <-->|"Host TCP/IP + veth"| Net1["Host Kernel Network Stack"]
+        Net1 <-->|"Overlay VXLAN / Wire"| Net2["Host Kernel Network Stack"]
+        Net2 <-->|"Host TCP/IP + veth"| Proxy2["Envoy Sidecar Container"]
+        Proxy2 <-->|"Localhost / Loopback"| App2["App Container"]
+        Note1["Penalty: 4 Network Hops<br/>Memory: ~100MB per Pod<br/>Pod restarts on upgrade"]
     end
 
     subgraph eBPFShortCircuit ["Cilium eBPF Socket Layer Bypass"]
         direction TB
-        AppC1["Client Socket"] ===|sock_ops / sk_msg direct copy| AppC2["Server Socket"]
-        AppC2 -.->|Bypasses TCP/IP & iptables completely| KernelSock["Linux Kernel Sockmap (sock_hash)"]
-        Note2["Latency: Wire-Speed (< 0.15ms)\nMemory: 0MB Pod overhead\nL7 Envoy invoked only if configured"]
+        AppC1["Client Socket"] ==>|"sock_ops / sk_msg direct copy"| AppC2["Server Socket"]
+        AppC2 -.->|"Bypasses TCP/IP completely"| KernelSock["Linux Kernel Sockmap (sock_hash)"]
+        Note2["Latency: Wire-Speed (&lt; 0.15ms)<br/>Memory: 0MB Pod overhead<br/>L7 Envoy invoked only if configured"]
     end
 
     subgraph IstioAmbientModel ["Istio Ambient Split-Plane Model"]
         direction TB
-        AppA1["Workload Pod"] -->|eBPF / Geneve redirect| Ztunnel1["Node ztunnel (Rust L4 DaemonSet)"]
-        Ztunnel1 -->|HBONE (HTTP/2 CONNECT + mTLS :15008)| Ztunnel2["Target Node ztunnel"]
-        Ztunnel2 -->|Optional L7 HTTPRoute / AuthZ| WaypointEnvoy["Namespace Waypoint (Envoy Pod)"]
+        AppA1["Workload Pod"] -->|"eBPF / Geneve redirect"| Ztunnel1["Node ztunnel (Rust L4 DaemonSet)"]
+        Ztunnel1 -->|"HBONE (HTTP/2 CONNECT + mTLS :15008)"| Ztunnel2["Target Node ztunnel"]
+        Ztunnel2 -->|"Optional L7 HTTPRoute / AuthZ"| WaypointEnvoy["Namespace Waypoint (Envoy Pod)"]
         WaypointEnvoy --> TargetApp["Target Workload Pod"]
-        Note3["Separation of Concerns\nL4: 150MB per Node (ztunnel)\nL7: Dedicated Waypoint per Tenant"]
+        Note3["Separation of Concerns<br/>L4: ~150MB per Node (ztunnel)<br/>L7: Dedicated Waypoint per Tenant"]
     end
 
     classDef legacy fill:#c92a2a,stroke:#861c1c,stroke-width:2px,color:#fff;
