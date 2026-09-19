@@ -19,6 +19,7 @@ This document provides a principal-level engineering dissection of the data plan
   - [2.3 CNI Coexistence: Cilium vs. OVN-Kubernetes vs. Multus](#23-cni-coexistence-cilium-vs-ovn-kubernetes-vs-multus)
   - [2.4 FIPS 140-3 Cryptographic Compliance](#24-fips-140-3-cryptographic-compliance)
 - [3. Comparative Summary Architecture Matrix](#3-comparative-summary-architecture-matrix)
+- [4. References & Authoritative Sources of Truth](#4-references--authoritative-sources-of-truth)
 
 ---
 
@@ -235,6 +236,29 @@ In enterprise government, banking, and defense clusters operating in FIPS mode:
   │ FIPS: Kernel WireGuard    │     │ FIPS: BoringCrypto/RHEL   │      │ FIPS: Go Crypto / RHEL    │
   └───────────────────────────┘     └───────────────────────────┘      └───────────────────────────┘
 ```
+
+---
+
+## 4. References & Authoritative Sources of Truth
+
+- **Linux Kernel Documentation on BPF `sock_ops` & `sk_msg`**: [https://docs.kernel.org/bpf/](https://docs.kernel.org/bpf/)  
+  *Authoritative kernel subsystem documentation covering socket layer hooks, `BPF_MAP_TYPE_SOCKHASH`, and stream redirection via `bpf_msg_redirect_hash()`.*
+- **Cilium eBPF Host-Routing & Socket-Level Enforcement**: [https://docs.cilium.io/en/stable/network/ebpf/](https://docs.cilium.io/en/stable/network/ebpf/)  
+  *Detailed architecture on bypassing TCP/IP and conntrack using kernel maps and socket programs.*
+- **Isovalent Whitepaper: Accelerating Envoy & Service Mesh with eBPF**: [https://isovalent.com/blog/post/2021-12-08-ebpf-servicemesh/](https://isovalent.com/blog/post/2021-12-08-ebpf-servicemesh/)  
+  *Technical deep-dive on latency benchmarking and socket-level packet journeys.*
+- **Istio Ambient Mode Architectural Specification**: [https://istio.io/latest/docs/ambient/overview/](https://istio.io/latest/docs/ambient/overview/)  
+  *Upstream documentation on the decoupling of Layer 4 transport security from Layer 7 application policies.*
+- **Istio ztunnel & HBONE Protocol Architecture**: [https://istio.io/latest/docs/ambient/architecture/ztunnel/](https://istio.io/latest/docs/ambient/architecture/ztunnel/)  
+  *Specification of the Rust L4 daemonset, in-pod redirection, and HTTP/2 CONNECT tunneling on port 15008.*
+- **Red Hat OpenShift Security Context Constraints (SCCs)**: [https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html](https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html)  
+  *Official OpenShift reference for configuring `privileged`, `anyuid`, and `restricted-v2` execution contexts.*
+- **Red Hat Enterprise Linux CoreOS (RHCOS) SELinux Policies**: [https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/)  
+  *Technical guidelines for Super Privileged Containers (`spc_t`) and `/sys/fs/bpf` mount propagation on CoreOS.*
+- **Red Hat OpenShift Service Mesh 3.x (OSSM 3) Architecture**: [https://docs.openshift.com/container-platform/latest/service_mesh/](https://docs.openshift.com/container-platform/latest/service_mesh/)  
+  *Enterprise documentation for Istio Ambient deployment over default OVN-Kubernetes networking.*
+- **NIST FIPS 140-3 Cryptographic Module Validation Program**: [https://csrc.nist.gov/projects/cryptographic-module-validation-program](https://csrc.nist.gov/projects/cryptographic-module-validation-program)  
+  *Federal cryptographic standards governing kernel WireGuard modules and BoringCrypto libraries.*
 
 ---
 

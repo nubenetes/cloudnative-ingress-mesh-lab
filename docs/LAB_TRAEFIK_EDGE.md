@@ -22,6 +22,7 @@ This laboratory provides an end-to-end, production-grade guide for deploying and
   - [6.2 Security Headers & Response Inspection](#62-security-headers--response-inspection)
   - [6.3 Rate Limiting Stress Test](#63-rate-limiting-stress-test)
   - [6.4 Live Prometheus Metrics Inspection](#64-live-prometheus-metrics-inspection)
+- [7. References & Authoritative Sources of Truth](#7-references--authoritative-sources-of-truth)
 
 ---
 
@@ -288,10 +289,25 @@ echo "Throttled Requests (429 Too Many Requests): ${RATELIMITED}"
 
 ### 6.4 Live Prometheus Metrics Inspection
 
-Inspect Traefik's internal Prometheus metrics:
+# Inspect Traefik's internal Prometheus metrics:
 ```bash
 kubectl exec -n traefik-system deploy/traefik -- wget -qO- http://localhost:9100/metrics | grep "traefik_service_request_duration_seconds" | head -n 15
 ```
+
+---
+
+## 7. References & Authoritative Sources of Truth
+
+- **Traefik v3 Official Documentation: Kubernetes Gateway Provider**: [https://doc.traefik.io/traefik/providers/kubernetes-gateway/](https://doc.traefik.io/traefik/providers/kubernetes-gateway/)  
+  *Upstream technical reference for configuring GatewayClass, Gateway listeners, HTTPRoutes, and extension filters.*
+- **Traefik Middlewares Overview & Configuration Reference**: [https://doc.traefik.io/traefik/middlewares/overview/](https://doc.traefik.io/traefik/middlewares/overview/)  
+  *Detailed specification for RateLimit (token bucket), CircuitBreaker, Custom Request/Response Headers, and ForwardAuth.*
+- **Traefik Official Helm Chart Documentation**: [https://github.com/traefik/traefik-helm-chart](https://github.com/traefik/traefik-helm-chart)  
+  *Source of truth for Helm deployment parameters, experimental Gateway API flags, and service port definitions.*
+- **Traefik Observability: Prometheus Metrics Exposition**: [https://doc.traefik.io/traefik/observability/metrics/prometheus/](https://doc.traefik.io/traefik/observability/metrics/prometheus/)  
+  *Metrics schema for request durations, status code counts, and latency histogram buckets.*
+- **Red Hat OpenShift SecurityContextConstraints (SCCs) Reference**: [https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html](https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html)  
+  *Guidelines for granting appropriate execution permissions to edge ingress proxies on OpenShift clusters.*
 
 ---
 

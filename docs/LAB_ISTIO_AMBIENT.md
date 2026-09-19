@@ -24,6 +24,7 @@ This laboratory provides an end-to-end, production-grade guide for deploying and
   - [8.1 Automated Canary Verification Script](#81-automated-canary-verification-script)
   - [8.2 Cryptographic Zero-Trust Validation from Attacker Pod](#82-cryptographic-zero-trust-validation-from-attacker-pod)
   - [8.3 Live Data Plane Diagnostics](#83-live-data-plane-diagnostics)
+- [9. References & Authoritative Sources of Truth](#9-references--authoritative-sources-of-truth)
 
 ---
 
@@ -328,6 +329,23 @@ istioctl ztunnel-config certificates
 # Verify waypoint proxy routes
 istioctl proxy-config routes deploy/backend-waypoint.lab-istio
 ```
+
+---
+
+## 9. References & Authoritative Sources of Truth
+
+- **Istio Ambient Mode Getting Started Guide**: [https://istio.io/latest/docs/ambient/getting-started/](https://istio.io/latest/docs/ambient/getting-started/)  
+  *Official step-by-step documentation for bootstrapping the ambient profile and onboarding application namespaces.*
+- **Istio Ambient Waypoint Proxies & Gateway API**: [https://istio.io/latest/docs/ambient/usage/waypoint/](https://istio.io/latest/docs/ambient/usage/waypoint/)  
+  *Upstream guide on provisioning and targeting namespace-scoped Envoy instances using `gatewayClassName: istio-waypoint`.*
+- **Istio Security: AuthorizationPolicy Specification**: [https://istio.io/latest/docs/reference/config/security/authorization-policy/](https://istio.io/latest/docs/reference/config/security/authorization-policy/)  
+  *Configuration schema for L4 source principal validation and L7 HTTP operation matching.*
+- **Istio PeerAuthentication & STRICT mTLS Enforcement**: [https://istio.io/latest/docs/reference/config/security/peer_authentication/](https://istio.io/latest/docs/reference/config/security/peer_authentication/)  
+  *Technical guidelines on locking down namespaces to mutual TLS authentication via HBONE.*
+- **Istio Ambient Diagnostics & ztunnel CLI Reference**: [https://istio.io/latest/docs/ambient/usage/ztunnel-cni-tuning/](https://istio.io/latest/docs/ambient/usage/ztunnel-cni-tuning/)  
+  *Documentation on troubleshooting ztunnel sockets, active TLS certificates, and traffic redirection.*
+- **Kubernetes Gateway API: Experimental Channel Guidelines**: [https://gateway-api.sigs.k8s.io/concepts/versioning/](https://gateway-api.sigs.k8s.io/concepts/versioning/)  
+  *SIG-Network documentation covering experimental features required for Waypoint GatewayClass bindings.*
 
 ---
 

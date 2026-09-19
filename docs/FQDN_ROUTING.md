@@ -31,6 +31,7 @@ This document provides definitive configurations across **Red Hat OpenShift (4.1
   - [4.1 Cilium eBPF: In-Kernel DNS Proxy & `toFQDNs` Egress Policies](#41-cilium-ebpf-in-kernel-dns-proxy--tofqdns-egress-policies)
   - [4.2 Istio Ambient: Node-Level ztunnel DNS Capture & `ServiceEntry`](#42-istio-ambient-node-level-ztunnel-dns-capture--serviceentry)
 - [5. Comprehensive Distribution Comparison Matrix](#5-comprehensive-distribution-comparison-matrix)
+- [6. References & Authoritative Sources of Truth](#6-references--authoritative-sources-of-truth)
 
 ---
 
@@ -521,6 +522,25 @@ spec:
 | **Google Cloud GKE** | Kube-DNS / Cloud DNS | Managed | `kube-dns` ConfigMap `stubDomains` or GCP Cloud DNS Private Zone | **Yes** (GCP IAM or `kube-system`) |
 | **Cilium eBPF (Any Distro / OCP)** | Cilium CNI Agent | **Bypasses CoreDNS** | In-kernel eBPF socket interception & dynamic `toFQDNs` ipsets | None on CoreDNS; Cilium CNI privilege |
 | **Istio Ambient (Any Distro / OCP)** | `ztunnel` DaemonSet | **Bypasses CoreDNS** | Node `ztunnel` DNS capture (`ISTIO_META_DNS_CAPTURE`) + `ServiceEntry` | None on CoreDNS; standard Mesh onboarding |
+
+---
+
+## 6. References & Authoritative Sources of Truth
+
+- **Red Hat OpenShift DNS Operator Documentation**: [https://docs.openshift.com/container-platform/latest/networking/dns-operator.html](https://docs.openshift.com/container-platform/latest/networking/dns-operator.html)  
+  *Official OpenShift architecture reference for `dns.operator.openshift.io`, `spec.servers`, and zone forwarding behavior.*
+- **CoreDNS Official Documentation: Rewrite Plugin**: [https://coredns.io/plugins/rewrite/](https://coredns.io/plugins/rewrite/)  
+  *Upstream syntax, response code rewriting rules, and regular expression matching guidelines.*
+- **Amazon EKS User Guide: Customizing CoreDNS**: [https://docs.aws.amazon.com/eks/latest/userguide/coredns-custom.html](https://docs.aws.amazon.com/eks/latest/userguide/coredns-custom.html)  
+  *AWS documentation detailing the persistent `coredns-custom` ConfigMap integration across cluster upgrades.*
+- **Microsoft Azure AKS Documentation: Customize CoreDNS**: [https://learn.microsoft.com/en-us/azure/aks/coredns-custom](https://learn.microsoft.com/en-us/azure/aks/coredns-custom)  
+  *Official guide for setting up stub domains and custom server blocks in Azure Kubernetes Service.*
+- **Google Cloud GKE Documentation: Configuring Kube-DNS / Cloud DNS**: [https://cloud.google.com/kubernetes-engine/docs/how-to/kube-dns](https://cloud.google.com/kubernetes-engine/docs/how-to/kube-dns)  
+  *Upstream instructions for `kube-dns` ConfigMap `stubDomains` and VPC-native Cloud DNS routing.*
+- **Cilium Security Policy: DNS-Based (`toFQDNs`) Rules**: [https://docs.cilium.io/en/stable/security/policy/language/#dns-based](https://docs.cilium.io/en/stable/security/policy/language/#dns-based)  
+  *Architecture guide for in-kernel DNS proxy inspection, pattern matching, and dynamic IP set synchronization.*
+- **Istio Traffic Management: DNS Proxying Architecture**: [https://istio.io/latest/docs/ops/configuration/traffic-management/dns-proxy/](https://istio.io/latest/docs/ops/configuration/traffic-management/dns-proxy/)  
+  *Official reference on `ISTIO_META_DNS_CAPTURE`, sidecarless node-level resolution, and `ServiceEntry` virtual VIP mapping.*
 
 ---
 

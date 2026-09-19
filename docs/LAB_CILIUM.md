@@ -22,6 +22,7 @@ This laboratory provides an end-to-end, production-grade guide for deploying and
   - [7.1 Automated Canary Traffic-Split Test](#71-automated-canary-traffic-split-test)
   - [7.2 Cryptographic Security & Zero-Trust Validation](#72-cryptographic-security--zero-trust-validation)
   - [7.3 Live eBPF & Hubble Observability](#73-live-ebpf--hubble-observability)
+- [8. References & Authoritative Sources of Truth](#8-references--authoritative-sources-of-truth)
 
 ---
 
@@ -369,6 +370,23 @@ hubble observe --namespace lab-cilium --follow
 # View drop reasons across the cluster
 hubble observe --verdict DROPPED --follow
 ```
+
+---
+
+## 8. References & Authoritative Sources of Truth
+
+- **Kubernetes Gateway API v1.1 Specification (GA)**: [https://gateway-api.sigs.k8s.io/](https://gateway-api.sigs.k8s.io/)  
+  *Official standard for `GatewayClass`, `Gateway`, and `HTTPRoute` role decoupling and conformance rules.*
+- **Cilium Service Mesh: Gateway API Documentation**: [https://docs.cilium.io/en/stable/network/servicemesh/gateway-api/](https://docs.cilium.io/en/stable/network/servicemesh/gateway-api/)  
+  *Upstream guide on enabling Cilium's native Gateway API controller and Envoy-driven L7 routing.*
+- **Cilium Helm Configuration Reference**: [https://docs.cilium.io/en/stable/helm-reference/](https://docs.cilium.io/en/stable/helm-reference/)  
+  *Parameters for `kubeProxyReplacement`, `socketLB`, `bpf.masquerade`, and `authentication.mutual.spire`.*
+- **Cilium Mutual Authentication Architecture with SPIRE**: [https://docs.cilium.io/en/stable/security/mutual-authentication/](https://docs.cilium.io/en/stable/security/mutual-authentication/)  
+  *Official technical specification on control-plane handshake and SPIRE-backed cryptographic identity verification.*
+- **Hubble Observability & CLI User Guide**: [https://docs.cilium.io/en/stable/observability/hubble/](https://docs.cilium.io/en/stable/observability/hubble/)  
+  *Documentation on flow monitoring, metrics export, L7 HTTP inspection, and packet drop reasons.*
+- **Kind Documentation: Deploying with Alternative CNIs**: [https://kind.sigs.k8s.io/docs/user/cni/](https://kind.sigs.k8s.io/docs/user/cni/)  
+  *Official reference on disabling Kind's default CNI (`networking.disableDefaultCNI: true`) for custom eBPF fabrics.*
 
 ---
 
