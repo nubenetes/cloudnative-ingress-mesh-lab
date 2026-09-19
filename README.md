@@ -322,7 +322,7 @@ flowchart TB
     subgraph IstioAmbientModel ["&nbsp;&nbsp;Istio Ambient Split-Plane Model&nbsp;&nbsp;"]
         direction TB
         AppA1["&nbsp;&nbsp;&nbsp;&nbsp;Workload Pod&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(1/1 Single Container)&nbsp;&nbsp;&nbsp;&nbsp;"] -->|"eBPF / Geneve redirect"| Ztunnel1["&nbsp;&nbsp;&nbsp;&nbsp;Node L4 ztunnel&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Rust Shared DaemonSet)&nbsp;&nbsp;&nbsp;&nbsp;"]
-        Ztunnel1 -->|"HBONE (HTTP/2 CONNECT + mTLS :15008)"| Ztunnel2["&nbsp;&nbsp;&nbsp;&nbsp;Target Node L4 ztunnel&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Mutual TLS Terminator)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        Ztunnel1 -->|"HBONE: mTLS :15008"| Ztunnel2["&nbsp;&nbsp;&nbsp;&nbsp;Target Node L4 ztunnel&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Mutual TLS Terminator)&nbsp;&nbsp;&nbsp;&nbsp;"]
         Ztunnel2 -->|"Optional L7 HTTPRoute / AuthZ"| WaypointEnvoy["&nbsp;&nbsp;&nbsp;&nbsp;Namespace Waypoint Proxy&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Dedicated Envoy Pod)&nbsp;&nbsp;&nbsp;&nbsp;"]
         WaypointEnvoy --> TargetApp["&nbsp;&nbsp;&nbsp;&nbsp;Target Workload Pod&nbsp;&nbsp;&nbsp;&nbsp;"]
         Note3["&nbsp;&nbsp;&nbsp;&nbsp;Ambient Split Architecture:&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• L4 Transport: ~150MB per Node&nbsp;&nbsp;<br/>&nbsp;&nbsp;• L7 Policies: Isolated Waypoints&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Decoupled Lifecycle & Upgrades&nbsp;&nbsp;"]
@@ -355,19 +355,25 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    Client["&nbsp;&nbsp;&nbsp;&nbsp;External Client / Workload Pod&nbsp;&nbsp;&nbsp;&nbsp;"] -->|"TCP :80 / :443 / :8443"| EntryPoints["&nbsp;&nbsp;&nbsp;&nbsp;Traefik EntryPoints&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(web, websecure, internal)&nbsp;&nbsp;&nbsp;&nbsp;"]
-    
-    subgraph Engine ["&nbsp;&nbsp;Traefik v3 Core Processing Engine&nbsp;&nbsp;"]
-        EntryPoints --> Routers["&nbsp;&nbsp;&nbsp;&nbsp;Router Resolution Engine&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Gateway API HTTPRoute / IngressRoute)&nbsp;&nbsp;&nbsp;&nbsp;"]
-        Routers --> MWChain["&nbsp;&nbsp;&nbsp;&nbsp;Middleware Pipeline Execution&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(RateLimit -> StripPrefix -> TLSOption)&nbsp;&nbsp;&nbsp;&nbsp;"]
-        MWChain --> CBCheck{"&nbsp;&nbsp;Circuit Breaker Closed?&nbsp;&nbsp;"}
-        CBCheck -->|"Tripped (Open: >150ms / 15% errors)"| FastFail["&nbsp;&nbsp;&nbsp;&nbsp;Immediate 503 Service Unavailable&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Shields Failing Backends)&nbsp;&nbsp;&nbsp;&nbsp;"]
-        CBCheck -->|"Healthy (Closed / Half-Open)"| LoadBalancer["&nbsp;&nbsp;&nbsp;&nbsp;Dynamic Load Balancer Service&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Weighted WRR / Health Check)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    Client(["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>External Client / Workload Pod</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• North-South Ingress (Edge)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• East-West Hairpin Traffic&nbsp;&nbsp;&nbsp;&nbsp;"]) -->|"TCP :80 / :443 / :8443"| EntryPoints
+
+    subgraph Engine ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Traefik v3 Core Processing Engine Pipeline&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        EntryPoints["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Traefik v3 EntryPoints</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• web: Port :80 (HTTP)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• websecure: Port :443 (HTTPS)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• internal: Port :8443 (mTLS)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        EntryPoints --> Routers["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Router Resolution Engine</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Gateway API HTTPRoute&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Traefik IngressRoute CRD&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Host & Path Rule Matching&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        Routers --> MWChain["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Middleware Pipeline Execution</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 1. RateLimiter (Token-Bucket)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 2. StripPrefix (Path Modifier)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 3. TLSOption (mTLS Validation)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        MWChain --> CBCheck{"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Circuit Breaker</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;Healthy / Closed?&nbsp;&nbsp;&nbsp;&nbsp;"}
+        
+        CBCheck -->|"Tripped: >150ms / 15% err"| FastFail["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Circuit Breaker: OPEN</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Fast-Fail HTTP 503 Return&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Immediate Failure Response&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Shields Failing Backends&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        CBCheck -->|"Healthy: Closed/Half-Open"| LoadBalancer["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Dynamic Load Balancer</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Weighted Round-Robin (WRR)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Active Health Check Monitor&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Dynamic Endpoint Balancing&nbsp;&nbsp;&nbsp;&nbsp;"]
     end
     
-    subgraph Workloads ["&nbsp;&nbsp;Upstream Kubernetes Workloads&nbsp;&nbsp;"]
-        LoadBalancer -->|"90% Canary Weight"| PodA["&nbsp;&nbsp;&nbsp;&nbsp;Backend Workload v1 (Stable)&nbsp;&nbsp;&nbsp;&nbsp;"]
-        LoadBalancer -->|"10% Canary Weight"| PodB["&nbsp;&nbsp;&nbsp;&nbsp;Backend Workload v2 (Canary)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph Workloads ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Upstream Kubernetes Workloads & Canary Split&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        LoadBalancer -->|"90% Canary Weight"| PodA["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Backend Workload v1</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Stable Release Pods (v1.0)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 90% Allocated Production Load&nbsp;&nbsp;&nbsp;&nbsp;"]
+        LoadBalancer -->|"10% Canary Weight"| PodB["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Backend Workload v2</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Canary Release Pods (v2.0)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 10% Allocated Canary Load&nbsp;&nbsp;&nbsp;&nbsp;"]
     end
 
     classDef client fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
@@ -400,19 +406,21 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    AppPod["&nbsp;&nbsp;&nbsp;&nbsp;Application Container&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Business Logic Pod)&nbsp;&nbsp;&nbsp;&nbsp;"] <-->|"Loopback / Localhost"| RustProxy["&nbsp;&nbsp;&nbsp;&nbsp;linkerd2-proxy (Rust)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Memory-Safe Micro-Proxy)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    AppPod["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Client Application Pod</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Business Logic Container&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Calls Target Service&nbsp;&nbsp;&nbsp;&nbsp;"] <-->|"Loopback :127.0.0.1"| RustProxy["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>linkerd2-proxy (Rust)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Bespoke Micro-Proxy Sidecar&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 20MB-30MB Low RSS Memory&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Zero Memory Safety Flaws&nbsp;&nbsp;&nbsp;&nbsp;"]
     
-    subgraph ControlPlane ["&nbsp;&nbsp;Linkerd Control Plane (Zero-Config Security)&nbsp;&nbsp;"]
-        Identity["&nbsp;&nbsp;&nbsp;&nbsp;linkerd-identity&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Automated Short-Lived mTLS CA)&nbsp;&nbsp;&nbsp;&nbsp;"] -.->|"SPIFFE Certificates (24h TTL)"| RustProxy
-        Destination["&nbsp;&nbsp;&nbsp;&nbsp;linkerd-destination&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Service Discovery & Route Policy)&nbsp;&nbsp;&nbsp;&nbsp;"] -.->|"Service Profile / Gateway API State"| RustProxy
+    subgraph ControlPlane ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Linkerd Control Plane (Zero-Config Security)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        Identity["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>linkerd-identity</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Automated Localized mTLS CA&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Dynamic Cert Distribution&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 24h Rotating SPIFFE Certs&nbsp;&nbsp;&nbsp;&nbsp;"] -.->|"SPIFFE Certs (24h TTL)"| RustProxy
+        
+        Destination["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>linkerd-destination</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Service Discovery Controller&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• ServiceProfile & Policies&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Gateway API Mesh State&nbsp;&nbsp;&nbsp;&nbsp;"] -.->|"Policy & Endpoints"| RustProxy
     end
     
-    subgraph RoutingModel ["&nbsp;&nbsp;Gateway API Service-Level Binding&nbsp;&nbsp;"]
-        HTTPRoute["&nbsp;&nbsp;&nbsp;&nbsp;HTTPRoute Resource&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(parentRefs: Service instead of Gateway)&nbsp;&nbsp;&nbsp;&nbsp;"] -->|"Injects Rules"| Destination
+    subgraph RoutingModel ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Gateway API Service-Level Binding&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        HTTPRoute["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>HTTPRoute Resource</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• parentRefs: K8s Service&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Mesh Profile Conformance&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Zero Synthetic Gateways&nbsp;&nbsp;&nbsp;&nbsp;"] -->|"Injects Routing Rules"| Destination
     end
 
-    RustProxy -->|"Zero-Config mTLS / TLS 1.3"| PeerProxy["&nbsp;&nbsp;&nbsp;&nbsp;Peer linkerd2-proxy (Rust)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Target Micro-Proxy Sidecar)&nbsp;&nbsp;&nbsp;&nbsp;"]
-    PeerProxy <-->|"Loopback / Localhost"| TargetApp["&nbsp;&nbsp;&nbsp;&nbsp;Target Application Container&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Upstream Pod)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    RustProxy -->|"Zero-Config mTLS / TLS 1.3"| PeerProxy["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Peer linkerd2-proxy</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Destination Micro-Proxy&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Decrypts Inbound mTLS&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Enforces AuthZ Policies&nbsp;&nbsp;&nbsp;&nbsp;"]
+    
+    PeerProxy <-->|"Loopback :127.0.0.1"| TargetApp["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Target Application Pod</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Upstream Service Container&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Collocated in Target Pod&nbsp;&nbsp;&nbsp;&nbsp;"]
 
     classDef app fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
     classDef proxy fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
@@ -442,26 +450,29 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    subgraph KubernetesK8s ["&nbsp;&nbsp;Kubernetes Control Plane (Declarative API)&nbsp;&nbsp;"]
-        GWClass["&nbsp;&nbsp;&nbsp;&nbsp;GatewayClass: eg&nbsp;&nbsp;&nbsp;&nbsp;"]
-        GW["&nbsp;&nbsp;&nbsp;&nbsp;Gateway: eg-ingress&nbsp;&nbsp;&nbsp;&nbsp;"]
-        HRoute["&nbsp;&nbsp;&nbsp;&nbsp;HTTPRoute: backend-route&nbsp;&nbsp;&nbsp;&nbsp;"]
-        Policies["&nbsp;&nbsp;&nbsp;&nbsp;Envoy Gateway Policies&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(BackendTrafficPolicy / SecurityPolicy)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph KubernetesK8s ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kubernetes Control Plane (Declarative API)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        GWClass["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>GatewayClass: eg</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Envoy Gateway Controller ID&nbsp;&nbsp;&nbsp;&nbsp;"]
+        GW["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Gateway: eg-ingress</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Ingress Listener: Port :80/:443&nbsp;&nbsp;&nbsp;&nbsp;"]
+        HRoute["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>HTTPRoute Resource</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Host & Path Routing Rules&nbsp;&nbsp;&nbsp;&nbsp;"]
+        Policies["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Envoy Extension Policies</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• BackendTrafficPolicy (Circuit)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• SecurityPolicy (OIDC / JWT)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• ClientTrafficPolicy (TLS)&nbsp;&nbsp;&nbsp;&nbsp;"]
     end
 
-    subgraph EGControlPlane ["&nbsp;&nbsp;Envoy Gateway Controller Architecture&nbsp;&nbsp;"]
-        K8sTranslator["&nbsp;&nbsp;&nbsp;&nbsp;Kubernetes Gateway API Reconciler&nbsp;&nbsp;&nbsp;&nbsp;"]
-        IR["&nbsp;&nbsp;&nbsp;&nbsp;Intermediate Representation (IR)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Gateway-IR & xDS-IR Engine)&nbsp;&nbsp;&nbsp;&nbsp;"]
-        xDSServer["&nbsp;&nbsp;&nbsp;&nbsp;Dynamic xDS Management Server&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(gRPC ADS Stream on Port 18000)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph EGControlPlane ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Envoy Gateway Controller Architecture&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        K8sTranslator["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>K8s Gateway API Reconciler</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Watches Gateway API Resources&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Validates & Normalizes CRDs&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        IR["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Intermediate Representation</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Gateway-IR (Abstract Model)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• xDS-IR (Envoy Config Model)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        xDSServer["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Dynamic xDS Server</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• gRPC Aggregated Discovery (ADS)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Streaming Port :18000&nbsp;&nbsp;&nbsp;&nbsp;"]
         
         GWClass & GW & HRoute & Policies --> K8sTranslator
         K8sTranslator --> IR
         IR --> xDSServer
     end
 
-    subgraph EGDataPlane ["&nbsp;&nbsp;Managed Envoy Proxy Data Plane&nbsp;&nbsp;"]
-        xDSServer -->|"xDS v3 (LDS, RDS, CDS, EDS)"| EnvoyFleet["&nbsp;&nbsp;&nbsp;&nbsp;Managed Envoy Proxy Deployment&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;(C++ High-Performance Proxy Fleet)&nbsp;&nbsp;&nbsp;&nbsp;"]
-        EnvoyFleet -->|"Weighted Routing & Policy"| Upstream["&nbsp;&nbsp;&nbsp;&nbsp;Upstream Kubernetes Pods&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph EGDataPlane ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Managed Envoy Proxy Data Plane&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        xDSServer -->|"xDS v3 (LDS/RDS/CDS/EDS)"| EnvoyFleet["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Managed Envoy Fleet</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• C++ High-Performance Proxy&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Dynamic In-Memory Updates&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Zero Proxy Restarts on Edit&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        EnvoyFleet -->|"Weighted Routing"| Upstream["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Upstream Kubernetes Pods</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Microservice Application Pods&nbsp;&nbsp;&nbsp;&nbsp;"]
     end
 
     classDef k8s fill:#7048e8,stroke:#5f3dc4,stroke-width:2px,color:#fff;
@@ -615,18 +626,18 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start(["&nbsp;&nbsp;&nbsp;&nbsp;Evaluate Enterprise Networking Requirements&nbsp;&nbsp;&nbsp;&nbsp;"]) --> Q1{"&nbsp;&nbsp;Scope: Edge Ingress Only or East-West Mesh?&nbsp;&nbsp;"}
+    Start(["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Enterprise Networking Architecture</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;Requirement Evaluation&nbsp;&nbsp;&nbsp;&nbsp;"]) --> Q1{"&nbsp;&nbsp;&nbsp;&nbsp;Scope of Deployment?&nbsp;&nbsp;&nbsp;&nbsp;"}
     
-    Q1 -->|"Edge Ingress Only"| QEdge{"&nbsp;&nbsp;Primary Driver: API Mgmt, Standard, or Lightweight?&nbsp;&nbsp;"}
-    QEdge -->|"Lightweight, Fast, Proven"| RecTraefik["&nbsp;&nbsp;&nbsp;&nbsp;RECOMMENDATION: Traefik Proxy v3&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• 45MB RAM, low latency, rich middlewares&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Native Gateway API v1 conformance&nbsp;&nbsp;"]
-    QEdge -->|"Pure CNCF Reference Standard"| RecEG["&nbsp;&nbsp;&nbsp;&nbsp;RECOMMENDATION: Envoy Gateway&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Official community Gateway API controller&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Extensible policy attachments (xDS v3)&nbsp;&nbsp;"]
-    QEdge -->|"Full API Lifecycle & Monetization"| RecKong["&nbsp;&nbsp;&nbsp;&nbsp;RECOMMENDATION: Kong Gateway&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Developer portal, API keys, plugin ecosystem&nbsp;&nbsp;<br/>&nbsp;&nbsp;• OpenResty / NGINX C-core engine&nbsp;&nbsp;"]
+    Q1 -->|"Edge Ingress Only"| QEdge{"&nbsp;&nbsp;&nbsp;&nbsp;Primary Driver?&nbsp;&nbsp;&nbsp;&nbsp;"}
+    QEdge -->|"Lightweight & Fast"| RecTraefik["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>RECOMMENDATION: Traefik v3</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 45MB RAM & Low Latency&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Native Gateway API v1&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Rich Built-in Middlewares&nbsp;&nbsp;&nbsp;&nbsp;"]
+    QEdge -->|"CNCF Reference"| RecEG["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>RECOMMENDATION: Envoy Gateway</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Upstream Community Standard&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Extensible xDS v3 Policies&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Zero Vendor Lock-in&nbsp;&nbsp;&nbsp;&nbsp;"]
+    QEdge -->|"API Management"| RecKong["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>RECOMMENDATION: Kong Gateway</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Developer Portal & Monetization&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• OAuth2 / OIDC & KeyAuth&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• High-Performance OpenResty&nbsp;&nbsp;&nbsp;&nbsp;"]
     
-    Q1 -->|"Full East-West Service Mesh"| QMesh{"&nbsp;&nbsp;Platform & Performance Constraints?&nbsp;&nbsp;"}
-    QMesh -->|"Linux Kernel 5.10+, Telco, Wire-Speed"| RecCilium["&nbsp;&nbsp;&nbsp;&nbsp;RECOMMENDATION: Cilium eBPF Mesh&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Kernel socket short-circuiting (sockops)&nbsp;&nbsp;<br/>&nbsp;&nbsp;• WireGuard encryption, Hubble deep observability&nbsp;&nbsp;"]
-    QMesh -->|"OpenShift / Multi-Tenant / Decoupled L4/L7"| RecIstio["&nbsp;&nbsp;&nbsp;&nbsp;RECOMMENDATION: Istio Ambient Mode&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Red Hat OSSM 3.x native direction&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Rust ztunnel (L4) + opt-in Waypoint Envoy (L7)&nbsp;&nbsp;"]
-    QMesh -->|"Lightweight Sidecars, Memory-Sensitive, Rust"| RecLinkerd["&nbsp;&nbsp;&nbsp;&nbsp;RECOMMENDATION: Linkerd (Buoyant)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Ultra-low memory (20-30MB/pod), zero-config mTLS&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Note: Commercial dual-track licensing (2.15+)&nbsp;&nbsp;"]
-    QMesh -->|"Hybrid Multi-Cloud + Bare-Metal VMs"| RecKuma["&nbsp;&nbsp;&nbsp;&nbsp;RECOMMENDATION: Kong Mesh / Kuma&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Multi-zone control planes across VMs and K8s&nbsp;&nbsp;<br/>&nbsp;&nbsp;• Integrated DNS server (*.mesh on port 15053)&nbsp;&nbsp;"]
+    Q1 -->|"East-West Mesh"| QMesh{"&nbsp;&nbsp;&nbsp;&nbsp;Platform Constraints?&nbsp;&nbsp;&nbsp;&nbsp;"}
+    QMesh -->|"eBPF Wire-Speed"| RecCilium["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>RECOMMENDATION: Cilium eBPF</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Kernel sockops Short-Circuit&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 0MB Sidecar RAM per Pod&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Sub-0.15ms Latency Overhead&nbsp;&nbsp;&nbsp;&nbsp;"]
+    QMesh -->|"OpenShift / Ambient"| RecIstio["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>RECOMMENDATION: Istio Ambient</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Decoupled L4 Rust ztunnel&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Namespace Waypoint Proxies&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Red Hat OSSM 3.x Strategy&nbsp;&nbsp;&nbsp;&nbsp;"]
+    QMesh -->|"Lightweight Rust"| RecLinkerd["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>RECOMMENDATION: Linkerd</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Memory-Safe Rust Micro-Proxy&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 20MB-30MB Low RSS Memory&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Automated SPIFFE mTLS CA&nbsp;&nbsp;&nbsp;&nbsp;"]
+    QMesh -->|"Hybrid Multi-Cloud"| RecKuma["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>RECOMMENDATION: Kong Mesh (Kuma)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Multi-Zone Control Planes&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• K8s + Bare-Metal Linux VMs&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Embedded *.mesh DNS (:15053)&nbsp;&nbsp;&nbsp;&nbsp;"]
 
     classDef start fill:#343a40,stroke:#212529,stroke-width:2px,color:#fff;
     classDef question fill:#f59f00,stroke:#d9480f,stroke-width:2px,color:#fff;
