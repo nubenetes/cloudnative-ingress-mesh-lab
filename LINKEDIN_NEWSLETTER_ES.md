@@ -1,4 +1,4 @@
-# 🚀 La Gran Batalla de Ingress, Service Mesh y FQDN Unificado (Edición 2026): eBPF vs. Istio Ambient vs. Traefik v3 vs. Envoy Gateway vs. Linkerd
+# 🚀 FQDN Unificado: La Gran Batalla de Ingress y Service Mesh (Edición 2026) — eBPF vs. Istio Ambient vs. Traefik v3 vs. Envoy Gateway vs. Linkerd
 
 **Subtítulo:** *Por qué la Arquitectura de FQDN Unificado (Norte-Sur y Este-Oeste) es Fundamental, Dominando Kubernetes Gateway API v1.1 GA y el Fin de los Sidecars en Kubernetes y Red Hat OpenShift Empresarial*  
 **Autor:** Equipo de Arquitectura e Ingeniería de Plataformas Cloud-Native  
@@ -9,7 +9,7 @@
 
 ---
 
-![Portada del Newsletter: La Gran Batalla de Ingress, Mesh y FQDN Unificado](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/cover_newsletter_es.png)  
+![Portada del Newsletter: FQDN Unificado: La Gran Batalla de Ingress y Service Mesh](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/cover_newsletter_es.png)  
 *🔍 [Ver Imagen de Portada en Alta Resolución (1200x630)](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/cover_newsletter_es.png)*
 
 ---
