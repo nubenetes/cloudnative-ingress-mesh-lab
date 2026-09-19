@@ -4,6 +4,12 @@
 
 # Lab 2: Sidecarless Service Mesh (Istio Ambient Mode)
 
+[![Istio Ambient](https://img.shields.io/badge/Istio-v1.23%2B%20Ambient-466BB0.svg?logo=istio&logoColor=white)](https://istio.io/)
+[![Gateway API](https://img.shields.io/badge/Gateway%20API-v1.1%20Experimental-7950F2.svg?logo=kubernetes&logoColor=white)](https://gateway-api.sigs.k8s.io/)
+[![Data Plane](https://img.shields.io/badge/Data%20Plane-ztunnel%20%2B%20Waypoint-466BB0.svg)](ARCHITECTURE.md)
+[![Automated PoC](https://img.shields.io/badge/PoC-make%20lab--istio-brightgreen.svg?logo=gnu-bash&logoColor=white)](../Makefile)
+[![Zero-Trust](https://img.shields.io/badge/Zero--Trust-HBONE%20mTLS-0077b6.svg)](https://istio.io/)
+
 This laboratory provides an end-to-end, production-grade guide for deploying and testing **Istio Ambient Mode** using node-level L4 **ztunnel** and namespace-level L7 **Waypoint Proxies** managed via the Kubernetes Gateway API.
 
 ---

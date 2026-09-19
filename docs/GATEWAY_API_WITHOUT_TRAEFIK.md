@@ -4,6 +4,12 @@
 
 # Setting Up Kubernetes Gateway API for North-South & East-West (with FQDNs) Without Traefik
 
+[![Gateway API](https://img.shields.io/badge/Gateway%20API-v1.1%20GA-7950F2.svg?logo=kubernetes&logoColor=white)](https://gateway-api.sigs.k8s.io/)
+[![Envoy Gateway](https://img.shields.io/badge/Envoy%20Gateway-v1.1%2B%20CNCF-7048e8.svg?logo=envoyproxy&logoColor=white)](https://gateway.envoyproxy.io/)
+[![Cilium Service Mesh](https://img.shields.io/badge/Cilium-Service%20Mesh%20v1.16-29B6F6.svg?logo=cilium&logoColor=white)](https://cilium.io/)
+[![Istio Ambient](https://img.shields.io/badge/Istio-v1.23%2B%20Ambient-466BB0.svg?logo=istio&logoColor=white)](https://istio.io/)
+[![OpenShift Route Replacement](https://img.shields.io/badge/OpenShift-Route%20Replacement-EE0000.svg?logo=redhat&logoColor=white)](https://docs.openshift.com/)
+
 A common misconception among platform engineers evaluating cloud-native architectures is that adopting the modern **Kubernetes Gateway API (`gateway.networking.k8s.io`)** requires deploying **Traefik Proxy**.
 
 **This is definitively false.**

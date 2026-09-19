@@ -4,6 +4,12 @@
 
 # Enterprise Scenarios, Decision Framework & Strategic Recommendations
 
+[![Decision Matrix](https://img.shields.io/badge/Architecture-Enterprise%20Decision%20Matrix-blueviolet.svg)](../README.md#table-1-enterprise-matrix-and-feature-comparison)
+[![Multi-Distribution](https://img.shields.io/badge/Platforms-EKS%20%7C%20AKS%20%7C%20GKE%20%7C%20ROSA-blue.svg)](../README.md)
+[![Zero-Trust](https://img.shields.io/badge/Security-NIST%20SP%20800--207-0077b6.svg)](https://csrc.nist.gov/publications/detail/sp/800-207/final)
+[![TCO Modeling](https://img.shields.io/badge/TCO-Overhead%20%26%20Resource%20Modeling-success.svg)](#4-total-cost-of-ownership-tco--compute-overhead-modeling)
+[![Blast Radius](https://img.shields.io/badge/Resilience-Failure%20Mode%20Analysis-critical.svg)](#5-failure-mode--blast-radius-analysis-matrix)
+
 Modern platform engineering teams face an overwhelming array of ingress controllers, Gateway API implementations, and service meshes. The marketing claims of "zero overhead" and "instant zero-trust" often obscure deep operational trade-offs, kernel compatibility traps, and licensing shifts.
 
 This document delivers principal-level technical analysis, failure-mode modeling, total cost of ownership (TCO) benchmarks, and **definitive recommendations for the six core enterprise scenarios**.

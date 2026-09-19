@@ -4,6 +4,12 @@
 
 # Extended Solutions Deep Dive: Linkerd, Envoy Gateway & Kong Gateway with Kuma
 
+[![Linkerd](https://img.shields.io/badge/Linkerd-v2.16%2B%20Rust-243B55.svg?logo=linkerd&logoColor=white)](https://linkerd.io/)
+[![Envoy Gateway](https://img.shields.io/badge/Envoy%20Gateway-v1.1%2B%20CNCF-7048e8.svg?logo=envoyproxy&logoColor=white)](https://gateway.envoyproxy.io/)
+[![Kong & Kuma](https://img.shields.io/badge/Kong%20%26%20Kuma-v3.7%2B%20Hybrid-1155cc.svg?logo=kong&logoColor=white)](https://konghq.com/)
+[![Gateway API](https://img.shields.io/badge/Gateway%20API-v1.1%20GA-7950F2.svg?logo=kubernetes&logoColor=white)](https://gateway-api.sigs.k8s.io/)
+[![SPIFFE Identity](https://img.shields.io/badge/Identity-SPIFFE%20mTLS-00b4d8.svg)](https://spiffe.io/)
+
 While the primary hands-on laboratories in this repository evaluate **Cilium eBPF**, **Istio Ambient Mode**, and **Traefik Proxy v3**, modern cloud-native architectures frequently evaluate three other prominent CNCF data planes:
 
 1. **Linkerd (Buoyant)**: The ultra-lightweight, memory-safe Rust micro-proxy sidecar mesh.

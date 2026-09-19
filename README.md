@@ -1,12 +1,33 @@
 # Cloud-Native Ingress & Service Mesh Laboratory (2026 Edition)
 ### Production Evaluation Framework, Architectural Analyses, and Automated PoCs for Next-Generation Kubernetes & OpenShift Networking Fabrics
 
-[![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.30%2B-blue.svg?logo=kubernetes)](https://kubernetes.io/)
-[![Red Hat OpenShift](https://img.shields.io/badge/OpenShift-v4.16%2B-red.svg?logo=redhat)](https://www.redhat.com/en/technologies/cloud-computing/openshift)
-[![Gateway API](https://img.shields.io/badge/Gateway%20API-v1.1%20GA-purple.svg)](https://gateway-api.sigs.k8s.io/)
-[![Cilium](https://img.shields.io/badge/Cilium-v1.16%2B-green.svg?logo=cilium)](https://cilium.io/)
-[![Istio Ambient](https://img.shields.io/badge/Istio-v1.23%2B%20Ambient-466BB0.svg?logo=istio)](https://istio.io/)
-[![Traefik](https://img.shields.io/badge/Traefik-v3.1%2B-24A1C1.svg?logo=traefikproxy)](https://traefik.io/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.30%2B-326CE5.svg?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![Red Hat OpenShift](https://img.shields.io/badge/OpenShift-4.14%20--%204.20%2B-EE0000.svg?logo=redhat&logoColor=white)](https://www.redhat.com/en/technologies/cloud-computing/openshift)
+[![Gateway API](https://img.shields.io/badge/Gateway%20API-v1.1%20GA-7950F2.svg?logo=kubernetes&logoColor=white)](https://gateway-api.sigs.k8s.io/)
+[![CNCF Graduated](https://img.shields.io/badge/CNCF-Graduated%20Fabrics-238636.svg?logo=cncf&logoColor=white)](https://www.cncf.io/)
+[![Linux eBPF](https://img.shields.io/badge/Linux%20Kernel-eBPF%20%7C%20sockops-E95420.svg?logo=linux&logoColor=white)](https://ebpf.io/)
+[![Zero-Trust](https://img.shields.io/badge/Security-NIST%20SP%20800--207%20Zero--Trust-0077b6.svg)](https://csrc.nist.gov/publications/detail/sp/800-207/final)
+
+[![Cilium eBPF](https://img.shields.io/badge/Cilium-v1.16%2B%20eBPF-29B6F6.svg?logo=cilium&logoColor=white)](https://cilium.io/)
+[![Istio Ambient](https://img.shields.io/badge/Istio-v1.23%2B%20Ambient-466BB0.svg?logo=istio&logoColor=white)](https://istio.io/)
+[![Traefik Proxy](https://img.shields.io/badge/Traefik-v3.1%2B%20Edge-24A1C1.svg?logo=traefikproxy&logoColor=white)](https://traefik.io/)
+[![Envoy Gateway](https://img.shields.io/badge/Envoy%20Gateway-v1.1%2B%20CNCF-7048e8.svg?logo=envoyproxy&logoColor=white)](https://gateway.envoyproxy.io/)
+[![Linkerd](https://img.shields.io/badge/Linkerd-v2.16%2B%20Rust-243B55.svg?logo=linkerd&logoColor=white)](https://linkerd.io/)
+[![Kong & Kuma](https://img.shields.io/badge/Kong%20%26%20Kuma-v3.7%2B%20Hybrid-1155cc.svg?logo=kong&logoColor=white)](https://konghq.com/)
+
+[![AWS ROSA & EKS](https://img.shields.io/badge/AWS-EKS%20%7C%20ROSA-FF9900.svg?logo=amazonwebservices&logoColor=white)](https://aws.amazon.com/rosa/)
+[![Google Cloud GKE](https://img.shields.io/badge/GCP-GKE%20Dataplane%20V2-4285F4.svg?logo=googlecloud&logoColor=white)](https://cloud.google.com/kubernetes-engine)
+[![Azure AKS](https://img.shields.io/badge/Azure-AKS%20Ready-0078D4.svg?logo=microsoftazure&logoColor=white)](https://azure.microsoft.com/en-us/products/kubernetes-service)
+[![SPIFFE Identity](https://img.shields.io/badge/Identity-SPIFFE%20mTLS-00b4d8.svg)](https://spiffe.io/)
+[![WireGuard](https://img.shields.io/badge/Encryption-WireGuard%20eBPF-88171A.svg?logo=wireguard&logoColor=white)](https://www.wireguard.com/)
+[![OpenShift SCC](https://img.shields.io/badge/OpenShift%20SCC-restricted--v2-2b8a3e.svg)](https://docs.openshift.com/)
+[![FIPS 140-3](https://img.shields.io/badge/Crypto-FIPS%20140--3%20Ready-darkgreen.svg)](https://csrc.nist.gov/publications/detail/fips/140/3/final)
+
+[![Turnkey Automation](https://img.shields.io/badge/Automation-Makefile%20%2B%20Bash%20PoCs-brightgreen.svg?logo=gnu-bash&logoColor=white)](Makefile)
+[![Hubble Observability](https://img.shields.io/badge/Observability-Hubble%20eBPF%20Metrics-FFA000.svg?logo=cilium&logoColor=white)](docs/LAB_CILIUM.md)
+[![Sidecarless Architecture](https://img.shields.io/badge/Data%20Plane-Sidecarless%20%7C%20eBPF%20%7C%20HBONE-informational.svg)](docs/ARCHITECTURE.md)
+[![LinkedIn Newsletter EN](https://img.shields.io/badge/LinkedIn%20Newsletter-English%20Edition-0A66C2.svg?logo=linkedin&logoColor=white)](LINKEDIN_NEWSLETTER_EN.md)
+[![LinkedIn Newsletter ES](https://img.shields.io/badge/Bolet%C3%ADn%20LinkedIn-Edici%C3%B3n%20Espa%C3%B1ol-0A66C2.svg?logo=linkedin&logoColor=white)](LINKEDIN_NEWSLETTER_ES.md)
 
 ---
 

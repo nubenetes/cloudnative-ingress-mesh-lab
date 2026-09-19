@@ -4,6 +4,12 @@
 
 # Lab 1: Kernel-Level eBPF Gateway & Service Mesh (Cilium)
 
+[![Cilium eBPF](https://img.shields.io/badge/Cilium-v1.16%2B%20eBPF-29B6F6.svg?logo=cilium&logoColor=white)](https://cilium.io/)
+[![Gateway API](https://img.shields.io/badge/Gateway%20API-v1.1%20GA-7950F2.svg?logo=kubernetes&logoColor=white)](https://gateway-api.sigs.k8s.io/)
+[![Hubble Observability](https://img.shields.io/badge/Observability-Hubble%20UI%20%26%20CLI-FFA000.svg?logo=cilium&logoColor=white)](https://cilium.io/)
+[![Automated PoC](https://img.shields.io/badge/PoC-make%20lab--cilium-brightgreen.svg?logo=gnu-bash&logoColor=white)](../Makefile)
+[![Data Plane](https://img.shields.io/badge/Data%20Plane-Socket%20Layer%20eBPF-E95420.svg?logo=linux&logoColor=white)](ARCHITECTURE.md)
+
 This laboratory provides an end-to-end, production-grade guide for deploying and testing **Cilium Service Mesh and Gateway API** in a sidecarless, eBPF-accelerated environment.
 
 ---

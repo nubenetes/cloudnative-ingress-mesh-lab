@@ -4,6 +4,12 @@
 
 # Setting Up Kubernetes Gateway API for North-South & East-West (with FQDNs) Using Traefik Proxy v3
 
+[![Gateway API](https://img.shields.io/badge/Gateway%20API-v1.1%20GA-7950F2.svg?logo=kubernetes&logoColor=white)](https://gateway-api.sigs.k8s.io/)
+[![Traefik v3](https://img.shields.io/badge/Traefik-v3.1%2B%20Gateway%20Controller-24A1C1.svg?logo=traefikproxy&logoColor=white)](https://traefik.io/)
+[![ExtensionRef](https://img.shields.io/badge/Gateway%20API-ExtensionRef%20Middlewares-orange.svg)](https://doc.traefik.io/traefik/routing/providers/kubernetes-gateway/)
+[![PROXY Protocol v2](https://img.shields.io/badge/L4%20Transit-PROXY%20Protocol%20v2-informational.svg)](https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt)
+[![OpenShift SCC](https://img.shields.io/badge/OpenShift%20SCC-restricted--v2-2b8a3e.svg)](https://docs.openshift.com/)
+
 While our companion guide [**`docs/GATEWAY_API_WITHOUT_TRAEFIK.md`**](GATEWAY_API_WITHOUT_TRAEFIK.md) demonstrates that the Kubernetes Gateway API is a vendor-neutral specification that does not strictly *require* Traefik, **choosing Traefik Proxy v3 as your Gateway API implementation is often the most pragmatic, developer-friendly, and cost-effective architectural decision for enterprise platforms**.
 
 Traefik Proxy v3 combines an officially conformant **Kubernetes Gateway API controller** with a lightweight, single-binary Go reverse proxy. It provides native L7 routing, dynamic middleware chaining (rate limiting, circuit breaking, OIDC authentication), automated TLS certificate management, and split-horizon East-West FQDN management—all while running as an unprivileged workload under strict security standards.

@@ -4,6 +4,12 @@
 
 # FQDN-Driven Routing: North-South & East-West Architecture Across Kubernetes Distributions & Red Hat OpenShift 4.20+
 
+[![Dual-Plane FQDN](https://img.shields.io/badge/Traffic-Dual--Plane%20FQDN-purple.svg)](../README.md#diagram-7-dual-plane-fqdn-routing-paradigms-transparent-in-cluster-vs-split-horizon-ingress)
+[![OpenShift DNS](https://img.shields.io/badge/OpenShift-DNS%20Operator%20Zone%20Forwarding-EE0000.svg?logo=redhat&logoColor=white)](https://docs.openshift.com/)
+[![Traefik v3](https://img.shields.io/badge/Traefik-v3.1%2B%20IngressRoute-24A1C1.svg?logo=traefikproxy&logoColor=white)](https://traefik.io/)
+[![CoreDNS](https://img.shields.io/badge/DNS-CoreDNS%20Plugins-1864ab.svg)](https://coredns.io/)
+[![Multi-Cloud](https://img.shields.io/badge/Cloud-EKS%20%7C%20AKS%20%7C%20GKE%20%7C%20ROSA-blue.svg)](SCENARIOS_AND_RECOMMENDATIONS.md)
+
 In enterprise cloud-native fabrics, relying solely on Kubernetes internal short-names (`service` or `service.namespace.svc.cluster.local`) introduces operational debt and security non-compliance. Enforcing **Fully Qualified Domain Names (FQDNs)** across both North-South and East-West transit creates environment-agnostic, auditable architectures.
 
 However, DNS interception mechanisms vary fundamentally across Kubernetes distributions. Most notably, **in Red Hat OpenShift (OCP 4.14 – 4.20+), the Cluster DNS Operator reconciles and locks the cluster Corefile, strictly forbidding manual in-place rewrites.**

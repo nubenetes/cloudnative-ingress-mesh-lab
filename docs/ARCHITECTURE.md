@@ -4,6 +4,12 @@
 
 # Advanced Networking Architecture Deep Dive: eBPF Socket Layer vs. Ambient Proxies in Enterprise Kubernetes & OpenShift
 
+[![Linux eBPF](https://img.shields.io/badge/Linux%20Kernel-eBPF%20%7C%20sockops-E95420.svg?logo=linux&logoColor=white)](https://ebpf.io/)
+[![Istio Ambient](https://img.shields.io/badge/Istio-v1.23%2B%20Ambient-466BB0.svg?logo=istio&logoColor=white)](https://istio.io/)
+[![OpenShift SCC](https://img.shields.io/badge/OpenShift%20SCC-restricted--v2-2b8a3e.svg)](https://docs.openshift.com/)
+[![Zero-Trust](https://img.shields.io/badge/Security-NIST%20SP%20800--207-0077b6.svg)](https://csrc.nist.gov/publications/detail/sp/800-207/final)
+[![FIPS 140-3](https://img.shields.io/badge/Crypto-FIPS%20140--3%20Ready-darkgreen.svg)](https://csrc.nist.gov/publications/detail/fips/140/3/final)
+
 This document provides a principal-level engineering dissection of the data planes powering modern Kubernetes ingress and service mesh architectures in 2026. It contrasts **Kernel-level eBPF Short-Circuiting (Cilium)** with **Decoupled Ambient Proxying (Istio Ambient)**, followed by enterprise hardening guidelines for **Red Hat OpenShift**.
 
 ---

@@ -4,6 +4,12 @@
 
 # Lab 3: Gateway API-Native Edge Router (Traefik v3)
 
+[![Traefik Proxy](https://img.shields.io/badge/Traefik-v3.1%2B%20Edge-24A1C1.svg?logo=traefikproxy&logoColor=white)](https://traefik.io/)
+[![Gateway API](https://img.shields.io/badge/Gateway%20API-v1.1%20GA-7950F2.svg?logo=kubernetes&logoColor=white)](https://gateway-api.sigs.k8s.io/)
+[![Middleware Filters](https://img.shields.io/badge/Filters-ExtensionRef%20Middlewares-orange.svg)](GATEWAY_API_WITH_TRAEFIK.md)
+[![Automated PoC](https://img.shields.io/badge/PoC-make%20lab--traefik-brightgreen.svg?logo=gnu-bash&logoColor=white)](../Makefile)
+[![OpenShift SCC](https://img.shields.io/badge/OpenShift%20SCC-restricted--v2-2b8a3e.svg)](https://docs.openshift.com/)
+
 This laboratory provides an end-to-end, production-grade guide for deploying and operating **Traefik v3** as a high-performance, Kubernetes Gateway API-native edge ingress controller with advanced middleware filters.
 
 ---
