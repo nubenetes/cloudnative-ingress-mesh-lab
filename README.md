@@ -49,6 +49,8 @@
 | **[LAB_CILIUM.md](docs/LAB_CILIUM.md)** | Automated PoC: Kernel-level eBPF Gateway & Mesh, Canary, Hubble observability |
 | **[LAB_ISTIO_AMBIENT.md](docs/LAB_ISTIO_AMBIENT.md)** | Automated PoC: Sidecarless Istio Ambient (ztunnel + Waypoint), mTLS validation |
 | **[LAB_TRAEFIK_EDGE.md](docs/LAB_TRAEFIK_EDGE.md)** | Automated PoC: Gateway API-native Edge Router, Middlewares, CircuitBreaker |
+| **[LINKEDIN_NEWSLETTER_EN.md](LINKEDIN_NEWSLETTER_EN.md)** | LinkedIn Newsletter Edition (English): Complete 2026 architecture analysis, dual-plane FQDN, TCO benchmarks & playbooks |
+| **[LINKEDIN_NEWSLETTER_ES.md](LINKEDIN_NEWSLETTER_ES.md)** | Edición Boletín LinkedIn (Español): Análisis integral 2026, FQDN dual, comparativa TCO y guías de migración |
 
 ---
 
@@ -701,6 +703,8 @@ flowchart TD
 ```
 cloudnative-ingress-mesh-lab/
 ├── README.md                 # Executive evaluation, architecture analysis, and ranking matrix
+├── LINKEDIN_NEWSLETTER_EN.md # LinkedIn newsletter edition (English): Complete 2026 architectural analysis
+├── LINKEDIN_NEWSLETTER_ES.md # Edición boletín LinkedIn (Español): Análisis arquitectónico integral 2026
 ├── Makefile                  # Global automation orchestrator for labs
 ├── docs/                     # Comprehensive architectural deep dives
 │   ├── ARCHITECTURE.md       # Multi-layer packet flow analyses and tradeoffs
