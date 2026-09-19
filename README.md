@@ -355,33 +355,46 @@ flowchart TB
 <summary><b>Diagram 3: Traefik Proxy v3 Edge Gateway & East-West Hairpin Pipeline (Click to Expand / Collapse)</b></summary>
 
 ```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 450, "nodeSpacing": 50, "rankSpacing": 50}}}%%
 flowchart TD
-    Client(["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>External Client / Workload Pod</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• North-South Ingress (Edge)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• East-West Hairpin Traffic&nbsp;&nbsp;&nbsp;&nbsp;"]) -->|"TCP :80 / :443 / :8443"| EntryPoints
+    subgraph ClientTier ["North-South / East-West Client Layer&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        Client["<b>External Client / Workload Pod</b><br/>• North-South Ingress (Edge)<br/>• East-West Hairpin Traffic"]
+    end
 
-    subgraph Engine ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Traefik v3 Core Processing Engine Pipeline&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
-        EntryPoints["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Traefik v3 EntryPoints</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• web: Port :80 (HTTP)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• websecure: Port :443 (HTTPS)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• internal: Port :8443 (mTLS)&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph Engine ["Traefik v3 Core Processing Engine Pipeline&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        EntryPoints["<b>Traefik v3 EntryPoints</b><br/>• web: Port :80 (HTTP)<br/>• websecure: Port :443 (HTTPS)<br/>• internal: Port :8443 (mTLS)"]
         
-        EntryPoints --> Routers["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Router Resolution Engine</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Gateway API HTTPRoute&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Traefik IngressRoute CRD&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Host & Path Rule Matching&nbsp;&nbsp;&nbsp;&nbsp;"]
+        Routers["<b>Router Resolution Engine</b><br/>• Gateway API HTTPRoute<br/>• Traefik IngressRoute CRD<br/>• Host & Path Rule Matching"]
         
-        Routers --> MWChain["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Middleware Pipeline Execution</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 1. RateLimiter (Token-Bucket)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 2. StripPrefix (Path Modifier)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 3. TLSOption (mTLS Validation)&nbsp;&nbsp;&nbsp;&nbsp;"]
+        MWChain["<b>Middleware Pipeline Execution</b><br/>• 1. RateLimiter (Token-Bucket)<br/>• 2. StripPrefix (Path Modifier)<br/>• 3. TLSOption (mTLS Validation)"]
         
-        MWChain --> CBCheck{"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Circuit Breaker</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;Healthy / Closed?&nbsp;&nbsp;&nbsp;&nbsp;"}
+        CBCheck{{"<b>Circuit Breaker Gate</b><br/>Closed / Healthy?"}}
         
-        CBCheck -->|"Tripped: >150ms / 15% err"| FastFail["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Circuit Breaker: OPEN</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Fast-Fail HTTP 503 Return&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Immediate Failure Response&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Shields Failing Backends&nbsp;&nbsp;&nbsp;&nbsp;"]
+        FastFail["<b>Circuit Breaker: OPEN</b><br/>• Fast-Fail HTTP 503 Return<br/>• Immediate Failure Response<br/>• Shields Failing Backends"]
         
-        CBCheck -->|"Healthy: Closed/Half-Open"| LoadBalancer["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Dynamic Load Balancer</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Weighted Round-Robin (WRR)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Active Health Check Monitor&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Dynamic Endpoint Balancing&nbsp;&nbsp;&nbsp;&nbsp;"]
+        LoadBalancer["<b>Dynamic Load Balancer</b><br/>• Weighted Round-Robin (WRR)<br/>• Active Health Check Monitor<br/>• Dynamic Endpoint Balancing"]
+        
+        EntryPoints --> Routers
+        Routers --> MWChain
+        MWChain --> CBCheck
+        CBCheck -->|"Tripped: >150ms / 15% err"| FastFail
+        CBCheck -->|"Healthy: Closed/Half-Open"| LoadBalancer
     end
     
-    subgraph Workloads ["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Upstream Kubernetes Workloads & Canary Split&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
-        LoadBalancer -->|"90% Canary Weight"| PodA["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Backend Workload v1</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Stable Release Pods (v1.0)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 90% Allocated Production Load&nbsp;&nbsp;&nbsp;&nbsp;"]
-        LoadBalancer -->|"10% Canary Weight"| PodB["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Backend Workload v2</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• Canary Release Pods (v2.0)&nbsp;&nbsp;&nbsp;&nbsp;<br/>&nbsp;&nbsp;&nbsp;&nbsp;• 10% Allocated Canary Load&nbsp;&nbsp;&nbsp;&nbsp;"]
+    subgraph Workloads ["Upstream Workloads & Canary Split&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        PodA["<b>Backend Workload v1</b><br/>• Stable Release Pods (v1.0)<br/>• 90% Production Split"]
+        PodB["<b>Backend Workload v2</b><br/>• Canary Release Pods (v2.0)<br/>• 10% Canary Split"]
     end
 
-    classDef client fill:#495057,stroke:#212529,stroke-width:2px,color:#fff;
-    classDef traefik fill:#24A1C1,stroke:#18687d,stroke-width:2px,color:#fff;
-    classDef decision fill:#f59f00,stroke:#d9480f,stroke-width:2px,color:#fff;
-    classDef fail fill:#c92a2a,stroke:#861c1c,stroke-width:2px,color:#fff;
-    classDef pods fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff;
+    Client -->|"TCP :80 / :443 / :8443"| EntryPoints
+    LoadBalancer -->|"90% Canary Weight"| PodA
+    LoadBalancer -->|"10% Canary Weight"| PodB
+
+    classDef client fill:#495057,stroke:#212529,stroke-width:2px,color:#fff,min-width:260px;
+    classDef traefik fill:#24A1C1,stroke:#18687d,stroke-width:2px,color:#fff,min-width:260px;
+    classDef decision fill:#f59f00,stroke:#d9480f,stroke-width:2px,color:#fff,min-width:200px;
+    classDef fail fill:#c92a2a,stroke:#861c1c,stroke-width:2px,color:#fff,min-width:260px;
+    classDef pods fill:#2b8a3e,stroke:#1b5727,stroke-width:2px,color:#fff,min-width:260px;
 
     class Client client;
     class EntryPoints,Routers,MWChain,LoadBalancer traefik;
