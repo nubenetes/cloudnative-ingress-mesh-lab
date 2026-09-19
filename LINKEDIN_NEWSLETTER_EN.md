@@ -36,35 +36,16 @@ In this deep-dive edition, we dissect findings from our open-source laboratory [
 
 Every technology in the cloud-native networking landscape was designed to solve a specific engineering bottleneck. Choosing the right stack requires understanding the exact problem statement:
 
-```
-+---------------------------+-----------------------------------+-----------------------------------+
-| Solution / Paradigm       | Core Problem It Solves            | The Hidden Architectural Trade-Off|
-+---------------------------+-----------------------------------+-----------------------------------+
-| 1. In-Kernel eBPF         | Eliminates TCP/IP stack overhead  | High Day-0 friction on OpenShift; |
-|    (Cilium Gateway & Mesh)| & sidecars via kernel sockops     | requires CNI replacement & root   |
-|                           | (<0.15ms latency, 0MB pod RAM)    | host privileges (CAP_BPF).        |
-+---------------------------+-----------------------------------+-----------------------------------+
-| 2. Istio Ambient Mode     | Decouples L4 mTLS (node ztunnel)  | Slightly higher latency than raw  |
-|    (Red Hat OSSM 3.x)     | from L7 policies (waypoint);      | eBPF; requires modern Istio 1.22+ |
-|                           | slashes sidecar memory by 80%.    | / OpenShift Service Mesh 3.x.     |
-+---------------------------+-----------------------------------+-----------------------------------+
-| 3. Traefik Proxy v3       | Delivers rapid developer velocity | Go runtime garbage collection     |
-|    (Gateway API Provider) | in a single Go binary (50MB RAM); | introduces minor p99 tail jitter  |
-|                           | unprivileged restricted-v2 SCC.   | compared to pure C++ or eBPF.     |
-+---------------------------+-----------------------------------+-----------------------------------+
-| 4. Envoy Gateway          | Pure CNCF reference standard;     | Complex two-tier architecture     |
-|    (CNCF Reference)       | eliminates vendor lock-in via     | (Go controller + C++ Envoy pods); |
-|                           | dynamic xDS v3 ADS streaming.     | steep xDS debugging curve.        |
-+---------------------------+-----------------------------------+-----------------------------------+
-| 5. Linkerd Micro-Proxy    | Maximum pod-level blast radius    | Commercial licensing pivot (2.15+)|
-|    (Rust linkerd2-proxy)  | isolation with memory-safe Rust   | for stable releases; retains      |
-|                           | (15-30MB/pod, zero CVEs).         | sidecar operational model.        |
-+---------------------------+-----------------------------------+-----------------------------------+
-| 6. Kong Gateway + Kuma    | Bridges legacy bare-metal VMs     | High memory footprint; dual-tier  |
-|    (Hybrid Multi-Zone)    | with K8s; embedded DNS (*.mesh)   | data plane (OpenResty + Envoy).   |
-|                           | and enterprise API developer hub. |                                   |
-+---------------------------+-----------------------------------+-----------------------------------+
-```
+![The Core Problems Each Solution Solves](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/table_core_problems_en.png)  
+*🔍 [View Full-Resolution Image](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/table_core_problems_en.png)*
+
+**Quick Executive Breakdown:**
+- **1. In-Kernel eBPF (Cilium Gateway & Mesh):** Eliminates TCP/IP stack overhead and sidecars via kernel `sockops` (<0.15ms latency, 0MB pod RAM). *Trade-off:* High Day-0 friction on OpenShift; requires CNI replacement & root host privileges (`CAP_BPF`).
+- **2. Istio Ambient Mode (Red Hat OSSM 3.x):** Decouples L4 mTLS (node `ztunnel`) from L7 policies (waypoint); slashes sidecar memory by 80%. *Trade-off:* Slightly higher latency than raw eBPF; requires modern Istio 1.22+ / OpenShift Service Mesh 3.x.
+- **3. Traefik Proxy v3 (Gateway API Provider):** Delivers rapid developer velocity in a single Go binary (~50MB RAM); unprivileged `restricted-v2` SCC. *Trade-off:* Go runtime garbage collection introduces minor p99 tail jitter compared to pure C++ or eBPF.
+- **4. Envoy Gateway (CNCF Reference):** Pure CNCF reference standard; eliminates vendor lock-in via dynamic xDS v3 ADS streaming. *Trade-off:* Complex two-tier architecture (Go controller + C++ Envoy pods); steep xDS debugging curve.
+- **5. Linkerd Micro-Proxy (Rust linkerd2-proxy):** Maximum pod-level blast radius isolation with memory-safe Rust (15-30MB/pod, zero CVEs). *Trade-off:* Commercial licensing pivot (2.15+) for stable releases; retains sidecar operational model.
+- **6. Kong Gateway + Kuma (Hybrid Multi-Zone):** Bridges legacy bare-metal VMs with K8s; embedded DNS (`*.mesh`) and enterprise API developer hub. *Trade-off:* High memory footprint; dual-tier data plane (OpenResty C/Lua + Envoy C++).
 
 ---
 
@@ -77,21 +58,12 @@ Platform engineers often assume:
 
 **This assumption is 100% false.**
 
-```
-   [ NORTH-SOUTH INGRESS ]                         [ EAST-WEST IN-CLUSTER ]
-External Client (Browser / API)               Pod A (Frontend / Client Service)
-              │                                               │
-    1. Query Public DNS                             1. Query Cluster DNS
-   (Route 53 / Infoblox)                           (/etc/resolv.conf -> CoreDNS)
-              │                                               │
-   2. Returns Ingress VIP                        2. Does CoreDNS know FQDN?
-              │                                      ┌────────┴────────┐
-   3. Sends TCP SYN + TLS                         NO │                 │ YES
-              │                                      ▼                 ▼
-   4. Traefik / Gateway API                     NXDOMAIN Error     Returns VIP
-      Matches Host Header                      (Kernel aborts      (Routes to
-      & Proxies to Backend                     socket setup!)      Gateway / Pod)
-```
+![The Dual-Plane FQDN Routing Dilemma](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/diagram_fqdn_dilemma_en.png)  
+*🔍 [View Full-Resolution Image](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/diagram_fqdn_dilemma_en.png)*
+
+**Understanding the Flow Difference:**
+- **North-South Ingress (External Traffic):** Client queries public DNS (Route 53) → receives Ingress VIP → completes TCP 3-way handshake + TLS → Traefik / Gateway API inspects the HTTP `Host` header and proxies to backend. **Result: Success!**
+- **East-West In-Cluster (Internal Microservices):** Pod A invokes `http://billing.internal.corp` → Linux kernel calls `getaddrinfo(3)` querying `/etc/resolv.conf` (CoreDNS) → CoreDNS returns **NXDOMAIN** because OpenShift's DNS Operator locks the Corefile → Kernel immediately aborts the TCP socket setup! **Result: Failure** because Layer 7 proxies never receive the packet until Layer 4 TCP connection succeeds.
 
 ### Why East-West FQDN Calls Fail: The Layer Boundary
 Traefik, Envoy, and HAProxy are **Layer 7 reverse proxies**. They cannot process an HTTP request until an underlying Layer 4 TCP connection (SYN, SYN-ACK, ACK) is established.
@@ -232,41 +204,14 @@ While Google manages the kernel daemon, GKE Dataplane V2 completely abstracts th
 
 ## 📊 2026 Comprehensive Multi-Engine Comparison Matrix
 
-```
-+---------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
-| Feature / Metric          | Traefik Proxy v3  | Envoy Gateway     | Istio Ambient     | Cilium eBPF       | OpenShift Route   |
-+---------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
-| Underlying Technology     | Go Static Binary  | C++ Envoy Proxy   | Rust ztunnel +    | Linux Kernel eBPF | HAProxy Userspace |
-|                           |                   |                   | Envoy Waypoint    | + Envoy           | Daemon            |
-+---------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
-| Gateway API Status        | v1.x GA Compliant | CNCF Reference GA | v1.x GA Compliant | v1.x GA Compliant | ❌ Deprecated /   |
-|                           |                   |                   |                   |                   | Non-Compliant     |
-+---------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
-| RAM Overhead per Pod      | 0MB (Sidecarless) | 0MB (Edge) /      | 0MB (App Pods) /  | 0MB (Pure Kernel  | 0MB (Edge Only)   |
-|                           |                   | ~150MB (Gateway)  | ~30MB (Node ztun) | sockops bypass)   |                   |
-+---------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
-| Latency Penalty (P99)     | ~0.8ms – 1.2ms    | ~0.6ms – 0.9ms    | ~0.4ms – 0.7ms    | < 0.15ms          | ~1.2ms – 2.0ms    |
-|                           |                   |                   |                   | (In-Kernel)       | (Reload spikes)   |
-+---------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
-| E-W Encryption Mechanism  | BackendTLSPolicy  | BackendTLSPolicy  | HBONE mTLS 1.3    | Transparent       | ❌ None (Perimeter|
-|                           | or Traefik Mesh   | or Envoy Sidecar  | (Port 15008)      | WireGuard / IPsec | only)             |
-+---------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
-| Workload SPIFFE Identity  | ⚠️ Via cert-mgr   | ⚠️ External SPIRE | ✅ Native SPIFFE  | ⚠️ Node-level WG  | ❌ None           |
-|                           |                   | required          | SAN verification  | (SPIRE optional)  |                   |
-+---------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
-| OpenShift 4.20+ CNI Fit   | ✅ 100% Native    | ✅ 100% Native    | ✅ Native Red Hat | ⚠️ High Risk (Day0| ✅ Native Default |
-|                           | (OVN-Kubernetes)  | (OVN-Kubernetes)  | OSSM 3.x Standard | CNI replacement)  |                   |
-+---------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
-| OpenShift SCC Level       | restricted-v2     | restricted-v2     | spc_t / privileged| CAP_BPF / Root    | hostnetwork /     |
-|                           | (Unprivileged)    | (Unprivileged)    | (Node DaemonSet)  | (Privileged CNI)  | Privileged        |
-+---------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
-| Built-in Web UI Dashboard | ✅ Native Realtime| ❌ None           | ❌ Kiali (Separate| ✅ Hubble UI      | OpenShift Console |
-|                           | Web Dashboard     | (CLI/Prometheus)  | deployment)       | (Separate pod)    |                   |
-+---------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
-| TCO & Operational Rating  | 🌟 Highest (Easiest| ⚖️ Moderate (xDS  | ⚖️ High Value,    | 🔧 Complex Day-2  | 📉 Poor (Legacy   |
-|                           | to operate)       | complexity)       | Enterprise Support| kernel debugging  | tech debt)        |
-+---------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
-```
+![2026 Comprehensive Multi-Engine Comparison Matrix](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/matrix_engine_comparison_en.png)  
+*🔍 [View Full-Resolution Image](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/matrix_engine_comparison_en.png)*
+
+**Key Takeaways from the Data Plane Audit:**
+- **Gateway API Conformance:** Traefik v3, Envoy Gateway, Istio Ambient, and Cilium are all GA conformant; legacy OpenShift Routes are deprecated and non-compliant.
+- **Pod RAM Tax:** Traefik, Cilium, and Istio Ambient impose **0MB per application Pod**, whereas traditional sidecars consume ~100MB+ per container.
+- **Latency (P99):** Cilium eBPF leads with `<0.15ms` in-kernel traversal; Istio Ambient achieves `0.4ms-0.7ms`; Traefik and Envoy deliver `0.6ms-1.2ms`.
+- **OpenShift Integration:** Traefik v3 and Envoy Gateway run cleanly under unprivileged `restricted-v2` SCC on native OVN-Kubernetes; Istio Ambient uses node-level daemonsets; Cilium requires privileged CNI replacement.
 
 ---
 
@@ -274,22 +219,8 @@ While Google manages the kernel daemon, GKE Dataplane V2 completely abstracts th
 
 What is the real cloud compute cost of running traditional sidecars versus modern 2026 sidecarless architectures?
 
-```
-Overhead Modeling Across Cluster Scales (RAM Allocation for Proxy Infrastructure):
-
-  500 GB ──────────────────────────────────────────────────────────  Traditional Sidecars
-                                                                     (5,000 Pods @ 100MB)
-  250 GB ─────────────────────────────────  Traditional Sidecars
-                                            (2,500 Pods @ 100MB)
-  100 GB ──────────  Traditional Sidecars
-                     (1,000 Pods @ 100MB)
-   25 GB ─────────────────────────────────  Istio Ambient Mode (OSSM 3.x)
-                                            (~15MB per node ztunnel + selective waypoints)
-    5 GB ─────────────────────────────────  Traefik v3 Edge / Internal Ingress
-                                            (Replicated Gateways only)
-    0 GB ─────────────────────────────────  Cilium eBPF In-Kernel Datapath
-                     1,000 Pods            2,500 Pods            5,000 Pods
-```
+![Quantified TCO and Memory Overhead](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/chart_tco_overhead_en.png)  
+*🔍 [View Full-Resolution Image](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/chart_tco_overhead_en.png)*
 
 - **Traditional Sidecar Tax:** At 5,000 pods, sidecars consume **500GB of RAM** and up to **2,500 vCPU threads**, representing upwards of **$120,000/year** in wasted AWS/Azure cloud spend.
 - **The Modern 2026 Path:** Migrating to **Istio Ambient**, **Cilium eBPF**, or **Traefik Zero-Sidecar Ingress** reclaims up to **90% of your cluster compute**, directly lowering cloud bills.
@@ -298,35 +229,9 @@ Overhead Modeling Across Cluster Scales (RAM Allocation for Proxy Infrastructure
 
 ## 🧭 Enterprise Master Decision Framework: Which Stack Should You Choose?
 
-```
-                     ┌───────────────────────────────────────────────┐
-                     │ Start: Ingress & Mesh Strategy Selection 2026 │
-                     └───────────────────────┬───────────────────────┘
-                                             │
-               Do you require in-kernel sub-0.2ms latency or eBPF socket bypass?
-                                             │
-                      ┌──────────────────────┴──────────────────────┐
-                   YES│                                           NO│
-                      ▼                                             ▼
-       ┌─────────────────────────────┐        Do you require strict per-pod SPIFFE
-       │ Adopt Cilium eBPF Gateway   │        X.509 mTLS for regulatory compliance?
-       │ • In-kernel sockops bypass  │                              │
-       │ • Kernel WireGuard tunnels  │               ┌──────────────┴──────────────┐
-       │ • Requires CNI replacement  │            YES│                           NO│
-       └─────────────────────────────┘               ▼                             ▼
-                                        Is your primary platform      Do you prioritize rapid velocity,
-                                         Red Hat OpenShift 4.20+?     low RAM, & rich native middlewares?
-                                                     │                             │
-                                         ┌───────────┴───────────┐         ┌───────┴───────┐
-                                      YES│                     NO│      YES│             NO│
-                                         ▼                       ▼         ▼               ▼
-                          ┌─────────────────────┐ ┌────────────────┐ ┌───────────┐ ┌───────────────┐
-                          │ Adopt Istio Ambient │ │ Adopt Envoy GW │ │ Adopt     │ │ Adopt Envoy   │
-                          │ Mode (OSSM 3.x)     │ │ + Istio Mesh   │ │ Traefik v3│ │ Gateway       │
-                          │ • Native Red Hat CNI│ │ • CNCF pure xDS│ │ Gateway   │ │ • CNCF xDS    │
-                          │ • Shared ztunnel    │ │ • Pure-play K8s│ │ • 50MB RAM│ │   Standard    │
-                          └─────────────────────┘ └────────────────┘ └───────────┘ └───────────────┘
-```
+![Enterprise Master Decision Framework](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/flowchart_decision_tree_en.png)  
+*🔍 [View Full-Resolution Image](https://raw.githubusercontent.com/nubenetes/cloudnative-ingress-mesh-lab/main/docs/images/newsletter/flowchart_decision_tree_en.png)*
+
 
 ### Granular Scenario Guidance:
 1. **Scenario 1: High-Velocity Web & API Ingress on OpenShift or Multi-Cloud**  
