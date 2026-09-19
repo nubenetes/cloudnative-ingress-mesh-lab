@@ -1,0 +1,131 @@
+# ==============================================================================
+# OpenShift 4.14 - 4.20+ Supported DNS Forwarding & In-Cluster Resolver
+# Resolves internal FQDNs (*.internal.corp) to Traefik v3 without modifying managed Corefile
+# ==============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: infra-dns
+  labels:
+    openshift.io/cluster-monitoring: "true"
+---
+# 1. Custom CoreDNS Configuration for Internal FQDN Resolution
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: internal-dns-corefile
+  namespace: infra-dns
+data:
+  Corefile: |
+    internal.corp:53 {
+        errors
+        log
+        health
+        # Rewrite any *.internal.corp to Traefik Edge Gateway ClusterIP
+        rewrite name regex (.*)\.internal\.corp traefik.traefik-system.svc.cluster.local answer auto
+        # Fallback to upstream cluster DNS if necessary
+        forward . 172.30.0.10
+        cache 30
+        reload
+    }
+---
+# 2. Unprivileged Secondary Resolver Deployment (Runs under restricted-v2 SCC)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: internal-dns-forwarder
+  namespace: infra-dns
+  labels:
+    app: internal-dns-forwarder
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: internal-dns-forwarder
+  template:
+    metadata:
+      labels:
+        app: internal-dns-forwarder
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: coredns
+          image: registry.k8s.io/coredns/coredns:v1.11.3
+          args: ["-conf", "/etc/coredns/Corefile"]
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/coredns
+              readOnly: true
+          ports:
+            - name: dns-udp
+              containerPort: 53
+              protocol: UDP
+            - name: dns-tcp
+              containerPort: 53
+              protocol: TCP
+            - name: metrics
+              containerPort: 9153
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: config-volume
+          configMap:
+            name: internal-dns-corefile
+            items:
+              - key: Corefile
+                path: Corefile
+---
+# 3. ClusterIP Service for OpenShift DNS Operator Upstream
+apiVersion: v1
+kind: Service
+metadata:
+  name: internal-dns-service
+  namespace: infra-dns
+  labels:
+    app: internal-dns-forwarder
+spec:
+  type: ClusterIP
+  ports:
+    - name: dns-udp
+      port: 53
+      targetPort: 53
+      protocol: UDP
+    - name: dns-tcp
+      port: 53
+      targetPort: 53
+      protocol: TCP
+  selector:
+    app: internal-dns-forwarder
+---
+# 4. OpenShift Cluster DNS Operator Patch (dns.operator.openshift.io/v1)
+# Apply via: oc patch dns.operator.openshift.io/default --type=merge --patch-file=this-resource
+# Note: In OpenShift 4.14 - 4.20+, the DNS operator manages the cluster Corefile.
+# This custom resource configures the native dns.operator to forward internal.corp queries.
+apiVersion: operator.openshift.io/v1
+kind: DNS
+metadata:
+  name: default
+spec:
+  servers:
+    - name: internal-corp-forwarder
+      zones:
+        - internal.corp
+      forwardPlugin:
+        upstreams:
+          # Note: Replace with ClusterIP of internal-dns-service in infra-dns
+          - "internal-dns-service.infra-dns.svc.cluster.local:53"
